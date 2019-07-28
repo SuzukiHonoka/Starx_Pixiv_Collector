@@ -255,8 +255,8 @@ for i in range(1, max_page + 1):
         print('User_id:', user_id)
         print('illust_id:', illust_id)
         print('Rank:', rank)
-        print('Rating_count', rating_count)
-        print('View_count', view_count)
+        print('Rating_count:', rating_count)
+        print('View_count:', view_count)
 
         pic_url = format_pixiv_illust_original_url(format_pixiv_illust_url(illust_id))
         print('Picture source address:', pic_url)

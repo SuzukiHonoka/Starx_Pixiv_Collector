@@ -12,7 +12,7 @@ import configparser
 print('Welcome to use Pixiv ranking collector !!')
 print('This program is powered by Starx.')
 
-proxy_enable = True
+proxy_enable = False
 proxy_host = ''
 proxy_port = ''
 pixiv_user_name = ''

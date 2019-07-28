@@ -8,19 +8,39 @@ import json
 import os
 import _thread
 import configparser
+import sys
+
+sys_platform=sys.platform
 
 print('Welcome to use Pixiv ranking collector !!')
 print('This program is powered by Starx.')
+print('Your are using',sys_platform,"platform.")
+
+symbol_win='\\'
+symbol_linux='/'
+global_symbol=''
+if sys_platform == 'linux':
+    global_symbol = symbol_linux
+elif sys_platform == 'win32':
+    global_symbol = symbol_win
+elif sys_platform == 'win64':
+    global_symbol = symbol_win
+else:
+    global_symbol = symbol_linux
+#
+
+save_path = os.path.abspath('.') + global_symbol + "Pixiv_Daily_Ranking" + global_symbol
 
 proxy_enable = False
 proxy_host = ''
 proxy_port = ''
 pixiv_user_name = ''
 pixiv_user_pass = ''
+cust_path_enable = False
 #
 if not os.path.exists('config.ini'):
-    if input('Did you want to use socks5 proxy? (Y/N):') == 'Y':
-        proxy_enable = True
+    if input('Do you want to use socks5 proxy? (Y/N):') == 'Y':
+        proxy_enable=True
         proxy_host = input('Please enter the socks5 server host ip address:')
         proxy_port = int(input('Please enter the socks5 server host port number:'))
     else:
@@ -28,9 +48,12 @@ if not os.path.exists('config.ini'):
         proxy_enable = False
     pixiv_user_name = input("Please enter your own pixiv account name:")
     pixiv_user_pass = input("Please enter your own pixiv account password:")
+    if input('Do you want to change default save path? (Y/N):') == 'Y':
+        cust_path_enable = True
+        save_path = input("Please enter the full path to save the data:")+global_symbol
     if input('Are you sure about that account information correct? (Y/N):') == 'Y':
         if input('Do you want to save this configuration as a file? (Y/N):') == 'Y':
-            path = os.path.abspath('.') + "\\"
+            path = os.path.abspath('.') + global_symbol
             config_name = "config.ini"
             abs_path = path + config_name
             if os.path.exists(abs_path):
@@ -44,6 +67,9 @@ if not os.path.exists('config.ini'):
             config.add_section("Account")
             config.set('Account', 'User_name', pixiv_user_name)
             config.set('Account', 'User_pass', pixiv_user_pass)
+            config.add_section('Data')
+            config.set('Data','CUST_PATH_ENABLE',cust_path_enable)
+            config.set('Data','SAVE_PATH',save_path)
             with open(abs_path, 'w+') as f:
                 config.write(f)
         print('Done!')
@@ -55,6 +81,9 @@ else:
     proxy_port = config['Proxy']['PORT']
     pixiv_user_name = config['Account']['User_name']
     pixiv_user_pass = config['Account']['User_pass']
+    cust_path_enable = config['Data']['CUST_PATH_ENABLE']
+    if cust_path_enable:
+        save_path = config['Data']['SAVE_PATH']
 #
 if proxy_enable:
     print('Gonna connect to your socks5 server...')
@@ -193,6 +222,10 @@ def download_file(url, path, exfile_name=None):
 
     path_output = path + local_filename
     print("File Location:" + path_output)
+    if not os.path.exists(path):
+        print("Folder doesn't exists!!")
+        os.mkdir(path)
+        print("Folder Created.")
 
     with s.get(url, stream=True) as pic:
         pic.raise_for_status()
@@ -201,7 +234,7 @@ def download_file(url, path, exfile_name=None):
             return False
         try:
             with open(path_output, 'wb') as f:
-                for chunk in pic.iter_content(chunk_size=8192):
+                for chunk in pic.iter_content(chunk_size=1024):
                     if chunk:
                         f.write(chunk)
         except:
@@ -224,7 +257,7 @@ for i in reversed(range(1, day + 1)):
     else:
         print("Error Status code:", ranking_daily_json.status_code, "at day " + str(i))
 #
-save_path = os.path.abspath('.') + "\\Pixiv_Daily_Ranking\\"
+
 # 共10页json
 for i in range(1, max_page + 1):
     print("Catching Page:", i)
@@ -256,8 +289,8 @@ for i in range(1, max_page + 1):
         print('User_id:', user_id)
         print('illust_id:', illust_id)
         print('Rank:', rank)
-        print('Rating_count:', rating_count)
-        print('View_count:', view_count)
+        print('Rating_count', rating_count)
+        print('View_count', view_count)
 
         pic_url = format_pixiv_illust_original_url(format_pixiv_illust_url(illust_id))
         print('Picture source address:', pic_url)

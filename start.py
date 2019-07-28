@@ -16,18 +16,18 @@ print('Welcome to use Pixiv ranking collector !!')
 print('This program is powered by Starx.')
 print('Your are using',sys_platform,"platform.")
 
-symbol_win='\\'
-symbol_linux='/'
-global_symbol=''
-if sys_platform == 'linux':
-    global_symbol = symbol_linux
-elif sys_platform == 'win32':
-    global_symbol = symbol_win
-elif sys_platform == 'win64':
-    global_symbol = symbol_win
-else:
-    global_symbol = symbol_linux
-#
+#symbol_win='\\'
+#symbol_linux='/'
+global_symbol='/'
+# if sys_platform == 'linux':
+#     global_symbol = symbol_linux
+# elif sys_platform == 'win32':
+#     global_symbol = symbol_win
+# elif sys_platform == 'win64':
+#     global_symbol = symbol_win
+# else:
+#     global_symbol = symbol_linux
+# #
 
 save_path = os.path.abspath('.') + global_symbol + "Pixiv_Daily_Ranking" + global_symbol
 
@@ -213,10 +213,13 @@ def format_pixiv_illust_original_url(id_url):
     final_dict = json.loads("{" + img_src[0] + "}")
     return final_dict['urls']['original']
 
+def format_pixiv_user_profile_all_url(target_user_id):
+    profile_all_url = "https://www.pixiv.net/ajax/user/"+str(target_user_id)+"/profile/all"
+    return profile_all_url
 
 def download_file(url, path, exfile_name=None):
     print("\nThread ID:" + str(_thread.get_ident()))
-    local_filename = pic_url.split('/')[-1]
+    local_filename = url.split('/')[-1]
     if exfile_name is not None:
         local_filename = exfile_name + "-" + local_filename
 
@@ -224,7 +227,7 @@ def download_file(url, path, exfile_name=None):
     print("File Location:" + path_output)
     if not os.path.exists(path):
         print("Folder doesn't exists!!")
-        os.mkdir(path)
+        os.makedirs(path)
         print("Folder Created.")
 
     with s.get(url, stream=True) as pic:
@@ -243,78 +246,101 @@ def download_file(url, path, exfile_name=None):
             print("File Saved:" + path_output)
         return True
 
-
-mode_asked=int(input('Please choose the ranking type(1-6):'))
-# 倒序取出可用日期
-start_time = time.time()
-for i in reversed(range(1, day + 1)):
-    print("Changing day param to :", i)
-    ranking_daily_json = s.get(format_pixiv_ranking_url(year_month, i, page))
-    if ranking_daily_json.status_code == 200:
-        print("Found the available Day at day " + str(i))
-        day = i
-        break
-    else:
-        print("Error Status code:", ranking_daily_json.status_code, "at day " + str(i))
-#
-
-# 共10页json
-for i in range(1, max_page + 1):
-    print("Catching Page:", i)
-    url = format_pixiv_ranking_url(year_month, day, i,mode_asked)
-    print("URL TARGET: " + url)
-    json_source_contents = s.get(url)
-    json_data = json.loads(json_source_contents.text)
-    temp_header = s.headers
-    temp_header['referer'] = url
-    s.headers = temp_header
-    # print("Current Page:", i, json_data)
-    for item in range(50):
-        single_data = json_data['contents'][item]
-        title = single_data['title']
-        date = single_data['date']
-        tag = single_data['tags']
-        user_name = single_data['user_name']
-        user_id = single_data['user_id']
-        illust_id = single_data['illust_id']
-        rank = single_data['rank']
-        rating_count = single_data['rating_count']
-        view_count = single_data['view_count']
-
-        print('-----Index of:', i, "Count", item)
-        print('Title:', title)
-        print('Date:', date)
-        print('Tag:', tag)
-        print('User_name:', user_name)
-        print('User_id:', user_id)
-        print('illust_id:', illust_id)
-        print('Rank:', rank)
-        print('Rating_count:', rating_count)
-        print('View_count:', view_count)
-
-        pic_url = format_pixiv_illust_original_url(format_pixiv_illust_url(illust_id))
-        print('Picture source address:', pic_url)
-
-        # s.headers={"refer":"https://www.pixiv.net/ranking.php?mode=daily&date=20190726"}
-        retry_count = 0
-        try:
-            _thread.TIMEOUT_MAX = 10000
-            _thread.start_new_thread(download_file, (pic_url, save_path))
-        except:
-            print("Error..")
-            if retry_count >= 3:
-                print("Not wokring..")
-                print("Skip!!")
-                continue
-            else:
-                print("Starting retry..")
-                retry_count += 1
+def download_thread(url,path,exfile_name=None):
+    retry_count = 0
+    try:
+        _thread.TIMEOUT_MAX = 10000
+        if not exfile_name == None:
+            _thread.start_new_thread(download_file, (url, path))
         else:
-            print("Download_Thread success!")
+            _thread.start_new_thread(download_file, (url, path,exfile_name))
+    except:
+        print("Error..")
+        if retry_count >= 3:
+            print("Not wokring..")
+            print("Skip!!")
+        else:
+            print("Starting retry..")
+            retry_count += 1
+    else:
+        print("Download_Thread success!")
 
-print('Job finished!')
-print('Total cost:',time.time()-start_time)
-# image_contens=s.get(pic_url,)
-# print(image_contens,s.cookies,s.headers)
-# 打印出json信息
-# print(result.json())
+while(True):
+    print('What do you want to do?')
+    print("Download the selected ranking pics(1)")
+    print("Download the pics from a user(2)")
+    print('Exit(3)')
+    choose=input("Your choose[1-3]:")
+    if choose == '1':
+        mode_asked = int(input('Please choose the ranking type(1-6):'))
+        # 倒序取出可用日期
+        start_time = time.time()
+        for i in reversed(range(1, day + 1)):
+            print("Changing day param to :", i)
+            ranking_daily_json = s.get(format_pixiv_ranking_url(year_month, i, page))
+            if ranking_daily_json.status_code == 200:
+                print("Found the available Day at day " + str(i))
+                day = i
+                break
+            else:
+                print("Error Status code:", ranking_daily_json.status_code, "at day " + str(i))
+        #
+        # 共10页json
+        for i in range(1, max_page + 1):
+            print("Catching Page:", i)
+            url = format_pixiv_ranking_url(year_month, day, i, mode_asked)
+            print("URL TARGET: " + url)
+            json_source_contents = s.get(url)
+            json_data = json.loads(json_source_contents.text)
+            temp_header = s.headers
+            temp_header['referer'] = url
+            s.headers = temp_header
+            # print("Current Page:", i, json_data)
+            for item in range(50):
+                single_data = json_data['contents'][item]
+                title = single_data['title']
+                date = single_data['date']
+                tag = single_data['tags']
+                user_name = single_data['user_name']
+                user_id = single_data['user_id']
+                illust_id = single_data['illust_id']
+                rank = single_data['rank']
+                rating_count = single_data['rating_count']
+                view_count = single_data['view_count']
+
+                print('-----Index of:', i, "Count", item)
+                print('Title:', title)
+                print('Date:', date)
+                print('Tag:', tag)
+                print('User_name:', user_name)
+                print('User_id:', user_id)
+                print('illust_id:', illust_id)
+                print('Rank:', rank)
+                print('Rating_count:', rating_count)
+                print('View_count:', view_count)
+
+                pic_url = format_pixiv_illust_original_url(format_pixiv_illust_url(illust_id))
+                print('Picture source address:', pic_url)
+
+                # s.headers={"refer":"https://www.pixiv.net/ranking.php?mode=daily&date=20190726"}
+                download_thread(pic_url,save_path)
+        print('Job finished!')
+        print('Total cost:', time.time() - start_time)
+    elif choose == '2':
+        target_user_id=int(input("Please enter the target user id(like 17300903):"))
+        profile_all=s.get(format_pixiv_user_profile_all_url(target_user_id))
+        profile_all_json=json.loads(profile_all.text)
+        all_illusts=profile_all_json['body']['illusts']
+        illusts_ids=all_illusts.keys()
+        total_ids=len(illusts_ids)
+        download_count=0
+        for single_illust in illusts_ids:
+            download_count+=1
+            print("Downloading",str(download_count),"of",total_ids)
+            download_thread(format_pixiv_illust_original_url(format_pixiv_illust_url(single_illust)),save_path+global_symbol+str(target_user_id)+global_symbol)
+        print('\nALL Done')
+        #print(type(illusts_ids),len(illusts_ids))
+
+
+    elif choose == '3':
+        exit()

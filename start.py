@@ -20,6 +20,7 @@ pixiv_user_pass = ''
 #
 if not os.path.exists('config.ini'):
     if input('Did you want to use socks5 proxy? (Y/N):') == 'Y':
+        proxy_enable = True
         proxy_host = input('Please enter the socks5 server host ip address:')
         proxy_port = int(input('Please enter the socks5 server host port number:'))
     else:

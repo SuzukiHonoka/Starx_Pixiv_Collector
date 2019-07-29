@@ -9,16 +9,17 @@ import os
 import _thread
 import configparser
 import sys
+from bs4 import BeautifulSoup
 
-sys_platform=sys.platform
+sys_platform = sys.platform
 
 print('Welcome to use Pixiv ranking collector !!')
 print('This program is powered by Starx.')
-print('Your are using',sys_platform,"platform.")
+print('Your are using', sys_platform, "platform.")
 
-#symbol_win='\\'
-#symbol_linux='/'
-global_symbol='/'
+# symbol_win='\\'
+# symbol_linux='/'
+global_symbol = '/'
 # if sys_platform == 'linux':
 #     global_symbol = symbol_linux
 # elif sys_platform == 'win32':
@@ -40,7 +41,7 @@ cust_path_enable = False
 #
 if not os.path.exists('config.ini'):
     if input('Do you want to use socks5 proxy? (Y/N):') == 'Y':
-        proxy_enable=True
+        proxy_enable = True
         proxy_host = input('Please enter the socks5 server host ip address:')
         proxy_port = int(input('Please enter the socks5 server host port number:'))
     else:
@@ -50,7 +51,7 @@ if not os.path.exists('config.ini'):
     pixiv_user_pass = input("Please enter your own pixiv account password:")
     if input('Do you want to change default save path? (Y/N):') == 'Y':
         cust_path_enable = True
-        save_path = input("Please enter the full path to save the data:")+global_symbol
+        save_path = input("Please enter the full path to save the data:") + global_symbol
     if input('Are you sure about that account information correct? (Y/N):') == 'Y':
         if input('Do you want to save this configuration as a file? (Y/N):') == 'Y':
             path = os.path.abspath('.') + global_symbol
@@ -68,8 +69,8 @@ if not os.path.exists('config.ini'):
             config.set('Account', 'User_name', pixiv_user_name)
             config.set('Account', 'User_pass', pixiv_user_pass)
             config.add_section('Data')
-            config.set('Data','CUST_PATH_ENABLE',cust_path_enable)
-            config.set('Data','SAVE_PATH',save_path)
+            config.set('Data', 'CUST_PATH_ENABLE', cust_path_enable)
+            config.set('Data', 'SAVE_PATH', save_path)
             with open(abs_path, 'w+') as f:
                 config.write(f)
         print('Done!')
@@ -133,8 +134,8 @@ s = requests.Session()
 s.headers = params
 
 # 获取登录页面
-res = s.get(login_url, params=params,timeout=10)
-
+res = s.get(login_url, params=params, timeout=10)
+res.raise_for_status()
 # print(res.text)
 # 获取post_key
 pattern = re.compile(r'name="post_key" value="(.*?)">')
@@ -143,9 +144,9 @@ r = pattern.findall(res.text)
 datas['post_key'] = r[0]
 
 # 模拟登录
-result = s.post(post_url, data=datas,timeout=10)
+result = s.post(post_url, data=datas, timeout=10)
 
-result_check=json.loads(result.text)['body']
+result_check = json.loads(result.text)['body']
 
 print(result_check)
 
@@ -180,6 +181,7 @@ Mode
     6:female
 """
 
+
 def format_pixiv_ranking_url(year_month, day, page, mode=1):
     ranking_type = "daily"
     if mode == 1:
@@ -203,22 +205,27 @@ def format_pixiv_ranking_url(year_month, day, page, mode=1):
         page) + '&format=json'
     return ranking_url
 
+
 #
 def format_pixiv_illust_url(illust_id):
     illust_url = 'https://www.pixiv.net/member_illust.php?mode=medium&illust_id=' + str(illust_id)
     return illust_url
 
+
 #
 def format_pixiv_illust_original_url(id_url):
     contents = s.get(id_url)
+    contents.raise_for_status()
     img_src_re = re.compile(r'\"urls\":{.*?}')
     img_src = img_src_re.findall(contents.text)
     final_dict = json.loads("{" + img_src[0] + "}")
     return final_dict['urls']['original']
 
+
 def format_pixiv_user_profile_all_url(target_user_id):
-    profile_all_url = "https://www.pixiv.net/ajax/user/"+str(target_user_id)+"/profile/all"
+    profile_all_url = "https://www.pixiv.net/ajax/user/" + str(target_user_id) + "/profile/all"
     return profile_all_url
+
 
 def download_file(url, path, exfile_name=None):
     print("\nThread ID:" + str(_thread.get_ident()))
@@ -249,14 +256,15 @@ def download_file(url, path, exfile_name=None):
             print("File Saved:" + path_output)
         return True
 
-def download_thread(url,path,exfile_name=None):
+
+def download_thread(url, path, exfile_name=None):
     retry_count = 0
     try:
         _thread.TIMEOUT_MAX = 10000
         if not exfile_name == None:
             _thread.start_new_thread(download_file, (url, path))
         else:
-            _thread.start_new_thread(download_file, (url, path,exfile_name))
+            _thread.start_new_thread(download_file, (url, path, exfile_name))
     except:
         print("Error..")
         if retry_count >= 3:
@@ -266,14 +274,16 @@ def download_thread(url,path,exfile_name=None):
             print("Starting retry..")
             retry_count += 1
     else:
-        print("Download_Thread success!")
+        print("Download thread successfully started!")
 
-while(True):
+
+while (True):
     print('What do you want to do?')
     print("Download the selected ranking pics(1)")
     print("Download the pics from a user(2)")
-    print('Exit(3)')
-    choose=input("Your choose[1-3]:")
+    print('Download the pics that you marked(3)')
+    print('Exit(4)')
+    choose = input("Your choose[1-4]:")
     if choose == '1':
         mode_asked = int(input('Please choose the ranking type(1-6):'))
         # 倒序取出可用日期
@@ -281,6 +291,7 @@ while(True):
         for i in reversed(range(1, day + 1)):
             print("Changing day param to :", i)
             ranking_daily_json = s.get(format_pixiv_ranking_url(year_month, i, page))
+            ranking_daily_json.raise_for_status()
             if ranking_daily_json.status_code == 200:
                 print("Found the available Day at day " + str(i))
                 day = i
@@ -294,6 +305,7 @@ while(True):
             url = format_pixiv_ranking_url(year_month, day, i, mode_asked)
             print("URL TARGET: " + url)
             json_source_contents = s.get(url)
+            json_source_contents.raise_for_status()
             json_data = json.loads(json_source_contents.text)
             temp_header = s.headers
             temp_header['referer'] = url
@@ -326,24 +338,48 @@ while(True):
                 print('Picture source address:', pic_url)
 
                 # s.headers={"refer":"https://www.pixiv.net/ranking.php?mode=daily&date=20190726"}
-                download_thread(pic_url,save_path)
+                download_thread(pic_url, save_path)
         print('Job finished!')
         print('Total cost:', time.time() - start_time)
     elif choose == '2':
-        target_user_id=int(input("Please enter the target user id(like 17300903):"))
-        profile_all=s.get(format_pixiv_user_profile_all_url(target_user_id))
-        profile_all_json=json.loads(profile_all.text)
-        all_illusts=profile_all_json['body']['illusts']
-        illusts_ids=all_illusts.keys()
-        total_ids=len(illusts_ids)
-        download_count=0
+        target_user_id = int(input("Please enter the target user id(like 17300903):"))
+        profile_all = s.get(format_pixiv_user_profile_all_url(target_user_id))
+        profile_all.raise_for_status()
+        profile_all_json = json.loads(profile_all.text)
+        all_illusts = profile_all_json['body']['illusts']
+        illusts_ids = all_illusts.keys()
+        total_ids = len(illusts_ids)
+        download_count = 0
         for single_illust in illusts_ids:
-            download_count+=1
-            print("Downloading",str(download_count),"of",total_ids)
-            download_thread(format_pixiv_illust_original_url(format_pixiv_illust_url(single_illust)),save_path+global_symbol+str(target_user_id)+global_symbol)
+            download_count += 1
+            print("Downloading", str(download_count), "of", total_ids)
+            download_thread(format_pixiv_illust_original_url(format_pixiv_illust_url(single_illust)),
+                            save_path + global_symbol + str(target_user_id) + global_symbol)
         print('\nALL Done')
-        #print(type(illusts_ids),len(illusts_ids))
-
-
+        # print(type(illusts_ids),len(illusts_ids))
     elif choose == '3':
+        print('Catching your bookmark..')
+        bookmark = s.get('https://www.pixiv.net/bookmark.php', timeout=10)
+        bookmark.raise_for_status()
+        # bookmark_data=json.loads(bookmark.text)
+        soup = BeautifulSoup(bookmark.text, 'html.parser')
+
+        bookmark_datas = soup.find(name='ul', attrs={'class': '_image-items js-legacy-mark-unmark-list'})
+
+        for marked_illust_id in bookmark_datas:
+            #each_marked_illust = marked_illust_id.find(name='a', attrs={'class': 'work _work'})
+            switch = marked_illust_id.a['class']
+            #print(type(marked_illust_id))
+            if switch == ['work', '_work']:
+                print("Single Resource detected!")
+                each_marked_illust = marked_illust_id.find(name='a', attrs={'class': "work _work"})
+                each_info1 = each_marked_illust.find(name='div', attrs={'class': '_layout-thumbnail'})
+                print(each_info1)
+            elif switch == ['work', '_work', 'multiple'] :
+                print("Multiple Resource detected!")
+                each_marked_illust = marked_illust_id.find(name='a', attrs={'class': 'work _work multiple'})
+                each_info1 = each_marked_illust.find(name='div', attrs={'class': '_layout-thumbnail'})
+                print(each_info1)
+
+    elif choose == '4':
         exit()

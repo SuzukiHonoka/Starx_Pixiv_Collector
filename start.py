@@ -291,7 +291,6 @@ while (True):
         for i in reversed(range(1, day + 1)):
             print("Changing day param to :", i)
             ranking_daily_json = s.get(format_pixiv_ranking_url(year_month, i, page))
-            ranking_daily_json.raise_for_status()
             if ranking_daily_json.status_code == 200:
                 print("Found the available Day at day " + str(i))
                 day = i

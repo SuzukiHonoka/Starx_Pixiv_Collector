@@ -30,7 +30,7 @@ global_symbol = '/'
 #     global_symbol = symbol_linux
 # #
 
-save_path = os.path.abspath('.') + global_symbol + "Pixiv_Daily_Ranking" + global_symbol
+save_path = os.path.abspath('.') + global_symbol + "Pixiv_Download" + global_symbol
 
 proxy_enable = False
 proxy_host = ''
@@ -173,29 +173,29 @@ ranking_daily_json = ""
 #
 """
 Mode
-    1:Daily
-    2:weekly
-    3:monthly
-    4:rookie
-    5:male
-    6:female
+    0:Daily
+    1:weekly
+    2:monthly
+    3:rookie
+    4:male
+    5:female
 """
-
+ranking_types=['daily','weekly','monthly','rookie','male','female']
 
 def format_pixiv_ranking_url(year_month, day, page, mode=1):
     ranking_type = "daily"
-    if mode == 1:
-        ranking_type = "daily"
+    if mode == 0:
+        ranking_type = ranking_types[0]
+    elif mode == 1:
+        ranking_type = ranking_types[1]
     elif mode == 2:
-        ranking_type = "weekly"
+        ranking_type = ranking_types[2]
     elif mode == 3:
-        ranking_type = "monthly"
+        ranking_type = ranking_types[3]
     elif mode == 4:
-        ranking_type = "rookie"
+        ranking_type = ranking_types[4]
     elif mode == 5:
-        ranking_type = "male"
-    elif mode == 6:
-        ranking_type = "female"
+        ranking_type = ranking_types[5]
     else:
         print("Unknown Mode")
         exit()
@@ -205,40 +205,56 @@ def format_pixiv_ranking_url(year_month, day, page, mode=1):
         page) + '&format=json'
     return ranking_url
 
-
 #
 def format_pixiv_illust_url(illust_id):
     illust_url = 'https://www.pixiv.net/member_illust.php?mode=medium&illust_id=' + str(illust_id)
     return illust_url
-
-
 #
-def format_pixiv_illust_original_url(id_url):
-    contents = s.get(id_url)
-    contents.raise_for_status()
-    img_src_re = re.compile(r'\"urls\":{.*?}')
-    img_src = img_src_re.findall(contents.text)
-    final_dict = json.loads("{" + img_src[0] + "}")
-    return final_dict['urls']['original']
-
+'''
+ mode:
+    1.single
+    2.multiple
+'''
+def format_pixiv_illust_original_url(id_url,mode=1):
+    if mode == 1:
+        contents = s.get(id_url)
+        contents.raise_for_status()
+        img_src_re = re.compile(r'\"urls\":{.*?}')
+        img_src = img_src_re.findall(contents.text)
+        final_dict = json.loads("{" + img_src[0] + "}")
+        return final_dict['urls']['original']
+    elif mode == 2:
+        data_list = []
+        json_datas = s.get(id_url)
+        json_datas.raise_for_status()
+        json_datas_format=json.loads(json_datas.text)['body']
+        for urls in json_datas_format:
+            data_list.append(urls['urls']['original'])
+        #print(data_list)
+        return data_list
 
 def format_pixiv_user_profile_all_url(target_user_id):
     profile_all_url = "https://www.pixiv.net/ajax/user/" + str(target_user_id) + "/profile/all"
     return profile_all_url
 
+def get_illust_name_frome_illust_url(url):
+    print(url)
+    illust_url_content=s.get(url,timeout=10)
+    illust_url_content.raise_for_status()
+    illust_url_content.encoding='unicode_escape'
+    img_name_re = re.compile(r'\"userIllusts\":{.*?}')
+    img_info = img_name_re.findall(illust_url_content.text)[0]
+    img_info_f="{"+img_info+"}}"
+    final_dict = json.loads(img_info_f)
+    return final_dict
 
-def download_file(url, path, exfile_name=None):
+def format_multi_illust_json_url(multi_illust_id):
+    multi_illust_json_url='https://www.pixiv.net/ajax/illust/'+str(multi_illust_id)+'/pages'
+    return multi_illust_json_url
+
+def download_file(url, path):
     print("\nThread ID:" + str(_thread.get_ident()))
-    local_filename = url.split('/')[-1]
-    if exfile_name is not None:
-        local_filename = exfile_name + "-" + local_filename
-
-    path_output = path + local_filename
-    print("File Location:" + path_output)
-    if not os.path.exists(path):
-        print("Folder doesn't exists!!")
-        os.makedirs(path)
-        print("Folder Created.")
+    path_output=path
 
     with s.get(url, stream=True) as pic:
         pic.raise_for_status()
@@ -256,15 +272,23 @@ def download_file(url, path, exfile_name=None):
             print("File Saved:" + path_output)
         return True
 
-
-def download_thread(url, path, exfile_name=None):
+def download_thread(url, path, exfile_name=None,exfile_dir=None):
+    local_path=path
+    local_filename = url.split('/')[-1]
+    if exfile_dir is not None:
+        local_path += global_symbol+exfile_dir+global_symbol
+    if exfile_name is not None:
+        local_filename = global_symbol + exfile_name + "-" + local_filename
+    path_output = local_path + local_filename
+    print("File Location:" + path_output)
+    if not os.path.exists(local_path):
+        print("Folder doesn't exists!!")
+        os.makedirs(local_path)
+        print("Folder Created.")
     retry_count = 0
     try:
         _thread.TIMEOUT_MAX = 10000
-        if not exfile_name == None:
-            _thread.start_new_thread(download_file, (url, path))
-        else:
-            _thread.start_new_thread(download_file, (url, path, exfile_name))
+        _thread.start_new_thread(download_file, (url, path_output))
     except:
         print("Error..")
         if retry_count >= 3:
@@ -276,7 +300,6 @@ def download_thread(url, path, exfile_name=None):
     else:
         print("Download thread successfully started!")
 
-
 while (True):
     print('What do you want to do?')
     print("Download the selected ranking pics(1)")
@@ -285,7 +308,7 @@ while (True):
     print('Exit(4)')
     choose = input("Your choose[1-4]:")
     if choose == '1':
-        mode_asked = int(input('Please choose the ranking type(1-6):'))
+        mode_asked = int(input('Please choose the ranking type(0-5):'))
         # 倒序取出可用日期
         start_time = time.time()
         for i in reversed(range(1, day + 1)):
@@ -321,7 +344,12 @@ while (True):
                 rank = single_data['rank']
                 rating_count = single_data['rating_count']
                 view_count = single_data['view_count']
-
+                illust_type_code=single_data['illust_type']
+                illust_type="Unknown"
+                if illust_type_code == '0':
+                    illust_type='Single'
+                elif illust_type_code == '1':
+                    illust_type='Multiple'
                 print('-----Index of:', i, "Count", item)
                 print('Title:', title)
                 print('Date:', date)
@@ -332,12 +360,20 @@ while (True):
                 print('Rank:', rank)
                 print('Rating_count:', rating_count)
                 print('View_count:', view_count)
+                print('Type:',illust_type)
 
-                pic_url = format_pixiv_illust_original_url(format_pixiv_illust_url(illust_id))
-                print('Picture source address:', pic_url)
+                if illust_type_code == '0':
+                    print('Single Download start!!')
+                    pic_url = format_pixiv_illust_original_url(format_pixiv_illust_url(illust_id))
+                    print('Picture source address:', pic_url)
+                    download_thread(pic_url, save_path, title, ranking_types[mode_asked])
+                elif illust_type_code == '1':
+                    print('Multiple Download start!!')
+                    data_listed=format_pixiv_illust_original_url(format_multi_illust_json_url(illust_id),2)
+                    for each_one in data_listed:
+                        print('One of Multiple Picture source address:',each_one)
+                        download_thread(each_one, save_path, title, ranking_types[mode_asked]+'/M-' + str(illust_id))
 
-                # s.headers={"refer":"https://www.pixiv.net/ranking.php?mode=daily&date=20190726"}
-                download_thread(pic_url, save_path)
         print('Job finished!')
         print('Total cost:', time.time() - start_time)
     elif choose == '2':
@@ -350,10 +386,11 @@ while (True):
         total_ids = len(illusts_ids)
         download_count = 0
         for single_illust in illusts_ids:
+            # illust_name = get_illust_name_frome_illust_url(format_pixiv_illust_url(single_illust))
             download_count += 1
             print("Downloading", str(download_count), "of", total_ids)
             download_thread(format_pixiv_illust_original_url(format_pixiv_illust_url(single_illust)),
-                            save_path + global_symbol + str(target_user_id) + global_symbol)
+                            save_path,None,str(target_user_id))
         print('\nALL Done')
         # print(type(illusts_ids),len(illusts_ids))
     elif choose == '3':
@@ -365,20 +402,65 @@ while (True):
 
         bookmark_datas = soup.find(name='ul', attrs={'class': '_image-items js-legacy-mark-unmark-list'})
 
+        print(len(bookmark_datas))
         for marked_illust_id in bookmark_datas:
             #each_marked_illust = marked_illust_id.find(name='a', attrs={'class': 'work _work'})
             switch = marked_illust_id.a['class']
             #print(type(marked_illust_id))
+            start_time=time.time()
             if switch == ['work', '_work']:
-                print("Single Resource detected!")
+                illust_type='Single'
+                # Info1
                 each_marked_illust = marked_illust_id.find(name='a', attrs={'class': "work _work"})
                 each_info1 = each_marked_illust.find(name='div', attrs={'class': '_layout-thumbnail'})
-                print(each_info1)
+                single_img_arrtrs_dict=each_info1.find(name='img').attrs
+                illust_id=single_img_arrtrs_dict['data-id']
+                tag=single_img_arrtrs_dict['data-tags']
+                user_id=single_img_arrtrs_dict['data-user-id']
+                # Info2
+                title_class=marked_illust_id.find(name="h1",attrs={'class':'title'}).attrs
+                title=title_class['title']
+                user_name_class=marked_illust_id.find(name="a",attrs={'class':'user ui-profile-popup'}).attrs
+                user_name=user_name_class['data-user_name']
+                print('----- ')
+                print('Title:',title)
+                print('User_id:', user_id)
+                print('User_name:', user_name)
+                print('illust_id:', illust_id)
+                print('Tag:', tag)
+                print('Type:',illust_type)
+                download_thread(format_pixiv_illust_original_url(format_pixiv_illust_url(illust_id)),save_path,title,'Bookmark')
+
             elif switch == ['work', '_work', 'multiple'] :
-                print("Multiple Resource detected!")
+                illust_type='Multiple'
                 each_marked_illust = marked_illust_id.find(name='a', attrs={'class': 'work _work multiple'})
                 each_info1 = each_marked_illust.find(name='div', attrs={'class': '_layout-thumbnail'})
-                print(each_info1)
+                single_img_arrtrs_dict=each_info1.find(name='img').attrs
+                illust_id=single_img_arrtrs_dict['data-id']
+                tag=single_img_arrtrs_dict['data-tags']
+                user_id=single_img_arrtrs_dict['data-user-id']
+                # Info2
+                title_class=marked_illust_id.find(name="h1",attrs={'class':'title'}).attrs
+                title=title_class['title']
+                user_name_class=marked_illust_id.find(name="a",attrs={'class':'user ui-profile-popup'}).attrs
+                user_name=user_name_class['data-user_name']
+                print('----- ')
+                print('Title:',title)
+                print('User_id:', user_id)
+                print('User_name:', user_name)
+                print('illust_id:', illust_id)
+                print('Tag:', tag)
+                print('Type:',illust_type)
+
+                data_listed=format_pixiv_illust_original_url(format_multi_illust_json_url(illust_id),2)
+                for each_one in data_listed:
+                    print('Start downloading multiple picture..')
+                    print('Single_URL:',each_one)
+                    download_thread(each_one,save_path,title,'Bookmark/M-'+illust_id)
+                print('Total cost:', time.time() - start_time)
+                print('ALL DONE!')
+
+
 
     elif choose == '4':
         exit()

@@ -2,9 +2,10 @@
 # Welcome to use This python program!!
 #### This Program is made by Starx.
 ### Depencies
-  1. socks
-  2. socket
-  3. requests
+  1. pysocks
+  2. requests
+  3. configparser
+  4. bs4
 # How to use 
   ```
   python3 start.py

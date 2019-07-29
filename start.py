@@ -145,12 +145,15 @@ datas['post_key'] = r[0]
 # 模拟登录
 result = s.post(post_url, data=datas,timeout=10)
 
-result_check=json.loads(result.text)
+result_check=json.loads(result.text)['body']
 
-if bool(result_check['error']):
-    print("Login Error!!")
+print(result_check)
+
+if 'success' in result_check:
+    print('Login success!')
+else:
+    print("Login Error!")
     exit()
-
 
 # 当前日期
 year_month = time.strftime("%Y%m", time.localtime())

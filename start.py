@@ -102,7 +102,7 @@ else:
 
 # init get param
 params = {
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) '
+    'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) '
                   'Chrome/75.0.3770.142 Safari/537.36',
     'authority': 'www.pixiv.net',
     'upgrade-insecure-requests': '1',
@@ -112,10 +112,10 @@ params = {
 }
 # init post param
 datas = {
-    'pixiv_id': 'user_name',
-    'password': 'user_password',
     'captcha': '',
     'g_reaptcha_response': '',
+    'password': 'user_password',
+    'pixiv_id': 'user_name',
     'post_key': '',
     'source': 'accounts',
     'ref': '',
@@ -136,25 +136,26 @@ s.headers = params
 # 获取登录页面
 res = s.get(login_url, params=params, timeout=10)
 res.raise_for_status()
-# print(res.text)
 # 获取post_key
 pattern = re.compile(r'name="post_key" value="(.*?)">')
 r = pattern.findall(res.text)
 
 datas['post_key'] = r[0]
-
+print('Post_Key:', datas['post_key'])
 # 模拟登录
-result = s.post(post_url, data=datas, timeout=10)
-
+result = s.post(post_url, params=params, data=datas, timeout=10)
 result_check = json.loads(result.text)['body']
-
-print(result_check)
 
 if 'success' in result_check:
     print('Login success!')
 else:
     print("Login Error!")
-    exit()
+    if input('Do you want to try to login with your own cookies?(Y/N):') == 'Y':
+        cookies = input('Please enter the cookies:')
+        format_cookies = {'cookie': cookies}
+        params.update(format_cookies)
+    else:
+        exit()
 
 # 当前日期
 year_month = time.strftime("%Y%m", time.localtime())
@@ -180,7 +181,8 @@ Mode
     4:male
     5:female
 """
-ranking_types=['daily','weekly','monthly','rookie','male','female']
+ranking_types = ['daily', 'weekly', 'monthly', 'rookie', 'male', 'female']
+
 
 def format_pixiv_ranking_url(year_month, day, page, mode=1):
     ranking_type = "daily"
@@ -205,56 +207,69 @@ def format_pixiv_ranking_url(year_month, day, page, mode=1):
         page) + '&format=json'
     return ranking_url
 
+
 #
 def format_pixiv_illust_url(illust_id):
     illust_url = 'https://www.pixiv.net/member_illust.php?mode=medium&illust_id=' + str(illust_id)
     return illust_url
+
+
 #
 '''
  mode:
     1.single
     2.multiple
 '''
-def format_pixiv_illust_original_url(id_url,mode=1):
+
+
+def format_pixiv_illust_original_url(id_url, mode=1):
     if mode == 1:
-        contents = s.get(id_url)
+        contents = s.get(id_url, params=params)
         contents.raise_for_status()
-        img_src_re = re.compile(r'\"urls\":{.*?}')
-        img_src = img_src_re.findall(contents.text)
-        final_dict = json.loads("{" + img_src[0] + "}")
-        return final_dict['urls']['original']
+        try:
+            img_src_re = re.compile(r'\"urls\":{.*?}')
+            img_src = img_src_re.findall(contents.text)
+            final_dict = json.loads("{" + img_src[0] + "}")
+            return final_dict['urls']['original']
+        except:
+            print("Error")
+            print(contents.text)
     elif mode == 2:
         data_list = []
-        json_datas = s.get(id_url)
+        json_datas = s.get(id_url, params=params)
         json_datas.raise_for_status()
-        json_datas_format=json.loads(json_datas.text)['body']
+        json_datas_format = json.loads(json_datas.text)['body']
         for urls in json_datas_format:
             data_list.append(urls['urls']['original'])
-        #print(data_list)
+        # print(data_list)
         return data_list
+
 
 def format_pixiv_user_profile_all_url(target_user_id):
     profile_all_url = "https://www.pixiv.net/ajax/user/" + str(target_user_id) + "/profile/all"
     return profile_all_url
 
+
 def get_illust_name_frome_illust_url(url):
     print(url)
-    illust_url_content=s.get(url,timeout=10)
+    illust_url_content = s.get(url, timeout=10)
     illust_url_content.raise_for_status()
-    illust_url_content.encoding='unicode_escape'
+    illust_url_content.encoding = 'unicode_escape'
     img_name_re = re.compile(r'\"userIllusts\":{.*?}')
     img_info = img_name_re.findall(illust_url_content.text)[0]
-    img_info_f="{"+img_info+"}}"
+    img_info_f = "{" + img_info + "}}"
     final_dict = json.loads(img_info_f)
     return final_dict
 
+
 def format_multi_illust_json_url(multi_illust_id):
-    multi_illust_json_url='https://www.pixiv.net/ajax/illust/'+str(multi_illust_id)+'/pages'
+    multi_illust_json_url = 'https://www.pixiv.net/ajax/illust/' + str(multi_illust_id) + '/pages'
     return multi_illust_json_url
+
 
 def download_file(url, path):
     print("\nThread ID:" + str(_thread.get_ident()))
-    path_output=path
+    path_output = path
 
     with s.get(url, stream=True) as pic:
         pic.raise_for_status()
@@ -272,11 +287,12 @@ def download_file(url, path):
             print("File Saved:" + path_output)
         return True
 
-def download_thread(url, path, exfile_name=None,exfile_dir=None):
-    local_path=path
+
+def download_thread(url, path, exfile_name=None, exfile_dir=None):
+    local_path = path
     local_filename = url.split('/')[-1]
     if exfile_dir is not None:
-        local_path += global_symbol+exfile_dir+global_symbol
+        local_path += global_symbol + exfile_dir + global_symbol
     if exfile_name is not None:
         local_filename = global_symbol + exfile_name + "-" + local_filename
     path_output = local_path + local_filename
@@ -299,6 +315,7 @@ def download_thread(url, path, exfile_name=None,exfile_dir=None):
             retry_count += 1
     else:
         print("Download thread successfully started!")
+
 
 while (True):
     print('What do you want to do?')
@@ -344,12 +361,12 @@ while (True):
                 rank = single_data['rank']
                 rating_count = single_data['rating_count']
                 view_count = single_data['view_count']
-                illust_type_code=single_data['illust_type']
-                illust_type="Unknown"
+                illust_type_code = single_data['illust_type']
+                illust_type = "Unknown"
                 if illust_type_code == '0':
-                    illust_type='Single'
+                    illust_type = 'Single'
                 elif illust_type_code == '1':
-                    illust_type='Multiple'
+                    illust_type = 'Multiple'
                 print('-----Index of:', i, "Count", item)
                 print('Title:', title)
                 print('Date:', date)
@@ -360,7 +377,7 @@ while (True):
                 print('Rank:', rank)
                 print('Rating_count:', rating_count)
                 print('View_count:', view_count)
-                print('Type:',illust_type)
+                print('Type:', illust_type)
 
                 if illust_type_code == '0':
                     print('Single Download start!!')
@@ -369,10 +386,10 @@ while (True):
                     download_thread(pic_url, save_path, title, ranking_types[mode_asked])
                 elif illust_type_code == '1':
                     print('Multiple Download start!!')
-                    data_listed=format_pixiv_illust_original_url(format_multi_illust_json_url(illust_id),2)
+                    data_listed = format_pixiv_illust_original_url(format_multi_illust_json_url(illust_id), 2)
                     for each_one in data_listed:
-                        print('One of Multiple Picture source address:',each_one)
-                        download_thread(each_one, save_path, title, ranking_types[mode_asked]+'/M-' + str(illust_id))
+                        print('One of Multiple Picture source address:', each_one)
+                        download_thread(each_one, save_path, title, ranking_types[mode_asked] + '/M-' + str(illust_id))
 
         print('Job finished!')
         print('Total cost:', time.time() - start_time)
@@ -390,7 +407,7 @@ while (True):
             download_count += 1
             print("Downloading", str(download_count), "of", total_ids)
             download_thread(format_pixiv_illust_original_url(format_pixiv_illust_url(single_illust)),
-                            save_path,None,str(target_user_id))
+                            save_path, None, str(target_user_id))
         print('\nALL Done')
         # print(type(illusts_ids),len(illusts_ids))
     elif choose == '3':
@@ -404,63 +421,61 @@ while (True):
 
         print(len(bookmark_datas))
         for marked_illust_id in bookmark_datas:
-            #each_marked_illust = marked_illust_id.find(name='a', attrs={'class': 'work _work'})
+            # each_marked_illust = marked_illust_id.find(name='a', attrs={'class': 'work _work'})
             switch = marked_illust_id.a['class']
-            #print(type(marked_illust_id))
-            start_time=time.time()
+            # print(type(marked_illust_id))
+            start_time = time.time()
             if switch == ['work', '_work']:
-                illust_type='Single'
+                illust_type = 'Single'
                 # Info1
                 each_marked_illust = marked_illust_id.find(name='a', attrs={'class': "work _work"})
                 each_info1 = each_marked_illust.find(name='div', attrs={'class': '_layout-thumbnail'})
-                single_img_arrtrs_dict=each_info1.find(name='img').attrs
-                illust_id=single_img_arrtrs_dict['data-id']
-                tag=single_img_arrtrs_dict['data-tags']
-                user_id=single_img_arrtrs_dict['data-user-id']
+                single_img_arrtrs_dict = each_info1.find(name='img').attrs
+                illust_id = single_img_arrtrs_dict['data-id']
+                tag = single_img_arrtrs_dict['data-tags']
+                user_id = single_img_arrtrs_dict['data-user-id']
                 # Info2
-                title_class=marked_illust_id.find(name="h1",attrs={'class':'title'}).attrs
-                title=title_class['title']
-                user_name_class=marked_illust_id.find(name="a",attrs={'class':'user ui-profile-popup'}).attrs
-                user_name=user_name_class['data-user_name']
+                title_class = marked_illust_id.find(name="h1", attrs={'class': 'title'}).attrs
+                title = title_class['title']
+                user_name_class = marked_illust_id.find(name="a", attrs={'class': 'user ui-profile-popup'}).attrs
+                user_name = user_name_class['data-user_name']
                 print('----- ')
-                print('Title:',title)
+                print('Title:', title)
                 print('User_id:', user_id)
                 print('User_name:', user_name)
                 print('illust_id:', illust_id)
                 print('Tag:', tag)
-                print('Type:',illust_type)
-                download_thread(format_pixiv_illust_original_url(format_pixiv_illust_url(illust_id)),save_path,title,'Bookmark')
+                print('Type:', illust_type)
+                download_thread(format_pixiv_illust_original_url(format_pixiv_illust_url(illust_id)), save_path, title,
+                                'Bookmark')
 
-            elif switch == ['work', '_work', 'multiple'] :
-                illust_type='Multiple'
+            elif switch == ['work', '_work', 'multiple']:
+                illust_type = 'Multiple'
                 each_marked_illust = marked_illust_id.find(name='a', attrs={'class': 'work _work multiple'})
                 each_info1 = each_marked_illust.find(name='div', attrs={'class': '_layout-thumbnail'})
-                single_img_arrtrs_dict=each_info1.find(name='img').attrs
-                illust_id=single_img_arrtrs_dict['data-id']
-                tag=single_img_arrtrs_dict['data-tags']
-                user_id=single_img_arrtrs_dict['data-user-id']
+                single_img_arrtrs_dict = each_info1.find(name='img').attrs
+                illust_id = single_img_arrtrs_dict['data-id']
+                tag = single_img_arrtrs_dict['data-tags']
+                user_id = single_img_arrtrs_dict['data-user-id']
                 # Info2
-                title_class=marked_illust_id.find(name="h1",attrs={'class':'title'}).attrs
-                title=title_class['title']
-                user_name_class=marked_illust_id.find(name="a",attrs={'class':'user ui-profile-popup'}).attrs
-                user_name=user_name_class['data-user_name']
+                title_class = marked_illust_id.find(name="h1", attrs={'class': 'title'}).attrs
+                title = title_class['title']
+                user_name_class = marked_illust_id.find(name="a", attrs={'class': 'user ui-profile-popup'}).attrs
+                user_name = user_name_class['data-user_name']
                 print('----- ')
-                print('Title:',title)
+                print('Title:', title)
                 print('User_id:', user_id)
                 print('User_name:', user_name)
                 print('illust_id:', illust_id)
                 print('Tag:', tag)
-                print('Type:',illust_type)
+                print('Type:', illust_type)
 
-                data_listed=format_pixiv_illust_original_url(format_multi_illust_json_url(illust_id),2)
+                data_listed = format_pixiv_illust_original_url(format_multi_illust_json_url(illust_id), 2)
                 for each_one in data_listed:
                     print('Start downloading multiple picture..')
-                    print('Single_URL:',each_one)
-                    download_thread(each_one,save_path,title,'Bookmark/M-'+illust_id)
+                    print('Single_URL:', each_one)
+                    download_thread(each_one, save_path, title, 'Bookmark/M-' + illust_id)
                 print('Total cost:', time.time() - start_time)
                 print('ALL DONE!')
-
-
-
     elif choose == '4':
         exit()

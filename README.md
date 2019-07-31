@@ -18,10 +18,10 @@ And just follow the echo words.
 #### Login to ***Pixiv*** website with Chrome.
 #### When you successfully redicreted,
 #### Press F12,focus on Network.
-#### Filter with "www.pixiv.net"
+#### Filter with ***www.pixiv.net***
 #### Then Press F5.
 #### Log the cookies value.
-
+![Screenshot](https://github.com/SuzukiHonoka/Starx_Pixiv_Collector/blob/master/How_to_1.png)
 
 # Yes! Now I can finally free my hands!❤
 #### Try to use a brand new Pixiv collector here.

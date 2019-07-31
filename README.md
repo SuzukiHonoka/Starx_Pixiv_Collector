@@ -6,7 +6,6 @@
   1. requests
   2. configparser
   3. bs4
-  4. selenium
 # How to run it?
   ```
   python3 start.py
@@ -31,7 +30,7 @@ And just follow the echo words.
 #### Then it will automatic start the download!!
 
 ### Download the pics that you marked (3)
-#### Onece you select this functions,
+#### Once you select this functions,
 #### It will automatic start the download!!
 
 # What should I do when a lots of errors apperas?
@@ -41,6 +40,7 @@ And just follow the echo words.
 
 ## How can I exit?
 ### Exit (5)
+
 # How to login with your own cookies?
 ![Only for this situation](https://github.com/SuzukiHonoka/Starx_Pixiv_Collector/blob/master/How_to_1_1.png)
 #### Login to ***Pixiv*** website with Chrome.
@@ -54,6 +54,7 @@ And just follow the echo words.
 # Yes! Now I can finally free my hands!❤
 #### Try to use a brand new Pixiv collector here.
 #### Which is very easy to start.
+
 ## Addtional statement:
 #### This program is only for personal use only,
 #### Every copy or modified products from this python source should be point that.

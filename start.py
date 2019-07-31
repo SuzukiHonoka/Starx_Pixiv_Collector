@@ -501,7 +501,7 @@ while (True):
             print('Starting bookmark download for page', str(single_page), 'of', book_total_page)
             per_page = s.get(format_book_page_url + str(single_page))
             per_soup = BeautifulSoup(per_page.text, 'html.parser')
-            bookmark_datas = soup.find(name='ul', attrs={'class': '_image-items js-legacy-mark-unmark-list'})
+            bookmark_datas = per_soup.find(name='ul', attrs={'class': '_image-items js-legacy-mark-unmark-list'})
             print(len(bookmark_datas))
             for marked_illust_id in bookmark_datas:
                 # each_marked_illust = marked_illust_id.find(name='a', attrs={'class': 'work _work'})

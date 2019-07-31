@@ -43,20 +43,22 @@ And just follow the echo words.
 
 # How to login with your own cookies?
 ![Only for this situation](https://github.com/SuzukiHonoka/Starx_Pixiv_Collector/blob/master/How_to_1_1.png)
-### Chrome
-  #### Login to ***Pixiv*** website with Chrome.
-  #### When you successfully redicreted,
-  #### Press F12,focus on Network.
-  #### Filter with ***www.pixiv.net***
-  #### Then Press F5.
-  #### Log the cookies value.
+### Chrome (PC)
+  ##### Login to ***Pixiv*** website with Chrome.
+  ##### When you successfully redicreted,
+  ##### Press F12,
+  ##### focus on Network.
+  ##### Filter with ***www.pixiv.net***
+  ##### Then Press F5.
+  ##### Log the cookies value.
   ![Screenshot](https://github.com/SuzukiHonoka/Starx_Pixiv_Collector/blob/master/How_to_1.png)
   
 ### Firefox (PC/Android)
   ![Firefox_Plugin](https://github.com/SuzukiHonoka/Starx_Pixiv_Collector/blob/master/How_to_1_2.png)
   [Get it!](https://addons.mozilla.org/en-US/firefox/addon/cookie-quick-manager/)
-  #### Export about the all *.pixiv.net cookies to a json file called 'cookies.json'
-  #### Move this file to your current py working folder.
+  ##### Export about the all *.pixiv.net cookies to a json file called 'cookies.json'
+  ##### Move this file to your current py working folder.
+
 # Yes! Now I can finally free my hands!❤
 #### Try to use a brand new Pixiv collector here.
 #### Which is very easy to start.

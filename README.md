@@ -17,7 +17,7 @@ And just follow the echo words.
 
 # Yes! Now I can finally free my hands!❤
 ## Addtional statement:
-## This program is only for personal use only,
-## Every copy or modified products from this python source should be point that.
-## Not welcome any stupid pig or computer moron to use it.
+#### This program is only for personal use only,
+#### Every copy or modified products from this python source should be point that.
+#### Not welcome any stupid pig or computer moron to use it.
 

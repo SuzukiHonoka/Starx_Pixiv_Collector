@@ -1,4 +1,5 @@
 ## Starx's_Pixiv_Collector
+#### A program written in python3.
 # Welcome to use this python program!!
 #### This Program is made by Starx.
 ### Depencies

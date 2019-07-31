@@ -14,8 +14,9 @@ You'll requierd to enter some config.
 
 And just follow the echo words.
 
-
 # Yes! Now I can finally free my hands!❤
+#### Try to use a brand new Pixiv collector here.
+#### Which is very easy to start.
 ## Addtional statement:
 #### This program is only for personal use only,
 #### Every copy or modified products from this python source should be point that.

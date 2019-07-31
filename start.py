@@ -9,7 +9,7 @@ import time
 
 import requests
 from bs4 import BeautifulSoup
-from selenium import webdriver
+#from selenium import webdriver
 
 sys_platform = sys.platform
 
@@ -157,42 +157,73 @@ def update_user_cookies():
         print("Login Error!")
         global piviv_user_cookies_is_not_empty
         if input('Do you want to try to login with your own cookies?(Y/N):') == 'Y':
-            cookies = input('Please enter the cookies:')
-            cookies_dict = {}
-            lst = cookies.split(';')
-            # print(lst)
-            for each_key in lst:
-                name = each_key.split('=')[0]
-                value = each_key.split('=')[1]
-                cookies_dict[name] = value
-            # print(cookies_dict)
-            with open('cookies', 'w+') as f:
-                f.write(json.dumps(cookies_dict))
-            s.cookies = requests.utils.cookiejar_from_dict(cookies_dict)
-            piviv_user_cookies_is_not_empty = True
-        else:
-            chrome_options = webdriver.ChromeOptions()
-            chrome_options.add_argument('--proxy-server=socks5://192.168.31.105:10808')
-            pixiv_login_web = webdriver.Chrome(options=chrome_options)
-            pixiv_login_web.get(login_url)
-            pixiv_login_web.find_element_by_xpath('//*[@id="LoginComponent"]/form/div[1]/div[1]/input').send_keys(
-                pixiv_user_name)
-            pixiv_login_web.find_element_by_xpath('//*[@id="LoginComponent"]/form/div[1]/div[2]/input').send_keys(
-                pixiv_user_pass)
-            pixiv_login_web.find_element_by_xpath('//*[@id="LoginComponent"]/form/button').click()
-            while pixiv_login_web.current_url == 'https://accounts.pixiv.net/login':
-                time.sleep(1)
-                print(time.localtime())
-                print("The web page haven't redirected..")
-                print('If the Google reCaptcha show up,Please finish it.')
-            print('Redirected!')
-            final_cookies = pixiv_login_web.get_cookies()
-            for cookie in final_cookies:
-                s.cookies.set(cookie['name'], cookie['value'])
-            with open('cookies', 'w+') as f:
-                f.write(json.dumps(requests.utils.dict_from_cookiejar(s.cookies)))
+            print('How did you get the cookies?')
+            where_did_you_get = input(
+                'From the Chrome Desktop Console/From the Firefox\'s Cookies Quick Manager[Type 1 or 2]:')
+            if where_did_you_get == '1':
+                cookies = input('Please enter the cookies:')
+                print('Parsing the cookies..')
+                cookies_dict = {}
+                lst = cookies.split(';')
+                # print(lst)
+                for each_key in lst:
+                    name = each_key.split('=')[0]
+                    value = each_key.split('=')[1]
+                    cookies_dict[name] = value
+                # print(cookies_dict)
+                print('Done!')
+                with open('cookies', 'w+') as f:
+                    f.write(json.dumps(cookies_dict))
+                s.cookies = requests.utils.cookiejar_from_dict(cookies_dict)
+                piviv_user_cookies_is_not_empty = True
+            elif where_did_you_get == '2':
+                if input('Did you saved the json file to ' + program_path + ' ?(Y/N):') == 'Y':
+                    cookies_file = open(program_path + 'cookies.json', 'r')
+                    cookies =json.loads(cookies_file.read())
+                    cookies_file.close()
+                    print('Parsing the cookies..')
+                    ex_cookies = {}
+                    print(type(cookies))
+                    for each_key in cookies:
+                        print(each_key)
+                        name = each_key['Name raw']
+                        value = each_key['Content raw']
+                        ex_cookies[name] = value
+                    print('Done!')
+                    with open('cookies', 'w+') as f:
+                        f.write(json.dumps(ex_cookies))
+                    s.cookies = requests.utils.cookiejar_from_dict(ex_cookies)
+                    piviv_user_cookies_is_not_empty = True
+                else:
+                    print('Bye!!')
+                    exit()
 
-            piviv_user_cookies_is_not_empty = True
+
+        else:
+            print('Bye!!')
+            exit()
+
+            # chrome_options = webdriver.ChromeOptions()
+            # chrome_options.add_argument('--proxy-server=socks5://192.168.31.105:10808')
+            # pixiv_login_web = webdriver.Chrome(options=chrome_options)
+            # pixiv_login_web.get(login_url)
+            # pixiv_login_web.find_element_by_xpath('//*[@id="LoginComponent"]/form/div[1]/div[1]/input').send_keys(
+            #     pixiv_user_name)
+            # pixiv_login_web.find_element_by_xpath('//*[@id="LoginComponent"]/form/div[1]/div[2]/input').send_keys(
+            #     pixiv_user_pass)
+            # pixiv_login_web.find_element_by_xpath('//*[@id="LoginComponent"]/form/button').click()
+            # while pixiv_login_web.current_url == 'https://accounts.pixiv.net/login':
+            #     time.sleep(1)
+            #     print(time.localtime())
+            #     print("The web page haven't redirected..")
+            #     print('If the Google reCaptcha show up,Please finish it.')
+            # print('Redirected!')
+            # final_cookies = pixiv_login_web.get_cookies()
+            # for cookie in final_cookies:
+            #     s.cookies.set(cookie['name'], cookie['value'])
+            # with open('cookies', 'w+') as f:
+            #     f.write(json.dumps(requests.utils.dict_from_cookiejar(s.cookies)))
+            # piviv_user_cookies_is_not_empty = True
 
 
 if proxy_enable:
@@ -206,7 +237,7 @@ if proxy_enable:
             'https': "socks5://" + proxy_host + ":" + proxy_port
         }
         s.proxies = proxies
-        #print(proxies)
+        # print(proxies)
     except Exception as e:
         print('When processing the socks5 server an error occurred.')
         print(e)
@@ -222,7 +253,7 @@ else:
     pixiv_user_cookies_dict = dict(pixiv_user_cookies)
     s.cookies = requests.utils.cookiejar_from_dict(pixiv_user_cookies_dict)
 
-#print(s.cookies)
+# print(s.cookies)
 
 # 当前日期
 year_month = time.strftime("%Y%m", time.localtime())
@@ -482,7 +513,8 @@ while (True):
             download_count += 1
             print("Downloading", str(download_count), "of", total_ids)
             download_thread(format_pixiv_illust_original_url(format_pixiv_illust_url(single_illust)),
-                            save_path,get_illust_name_from_illust_url(format_pixiv_illust_url(single_illust)) , str(target_user_id))
+                            save_path, get_illust_name_from_illust_url(format_pixiv_illust_url(single_illust)),
+                            str(target_user_id))
         print('\nALL Done')
         # print(type(illusts_ids),len(illusts_ids))
     elif choose == '3':

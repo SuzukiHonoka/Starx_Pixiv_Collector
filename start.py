@@ -185,7 +185,6 @@ def update_user_cookies():
                     ex_cookies = {}
                     print(type(cookies))
                     for each_key in cookies:
-                        print(each_key)
                         name = each_key['Name raw']
                         value = each_key['Content raw']
                         ex_cookies[name] = value

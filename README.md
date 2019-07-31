@@ -7,13 +7,26 @@
   2. configparser
   3. bs4
   4. selenium
-# How to use?
+# How to run it?
   ```
   python3 start.py
   ```
 You'll requierd to enter some config.
 
 And just follow the echo words.
+# What can it do?
+### Download the selected ranking pics
+#### There will has six type to let you select.
+#### Mode
+    0. Daily
+    1. weekly
+    2. monthly
+    3. rookie
+    4. male
+    5. female
+#### 
+
+####
 # How to login with your own cookies?
 ![Only for this situation](https://github.com/SuzukiHonoka/Starx_Pixiv_Collector/blob/master/How_to_1_1.png)
 #### Login to ***Pixiv*** website with Chrome.

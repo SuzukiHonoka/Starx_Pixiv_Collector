@@ -15,9 +15,9 @@ You'll requierd to enter some config.
 
 And just follow the echo words.
 # What can it do?
-### Download the selected ranking pics
+### Download the selected ranking pics (1)
 #### There will has six type to let you select.
-#### Mode
+#### Mode:
     0. Daily
     1. weekly
     2. monthly
@@ -26,7 +26,21 @@ And just follow the echo words.
     5. female
 #### 
 
-####
+### Download the pics from a user (2)
+#### Just give a user id,
+#### Then it will automatic start the download!!
+
+### Download the pics that you marked (3)
+#### Onece you select this functions,
+#### It will automatic start the download!!
+
+# What should I do when a lots of errors apperas?
+#### Don't worry,
+#### I have already made a funtion for update the cookies.
+#### Update the user cookies (4)
+
+## How can I exit?
+### Exit (5)
 # How to login with your own cookies?
 ![Only for this situation](https://github.com/SuzukiHonoka/Starx_Pixiv_Collector/blob/master/How_to_1_1.png)
 #### Login to ***Pixiv*** website with Chrome.

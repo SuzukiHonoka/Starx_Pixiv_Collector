@@ -14,6 +14,14 @@
 You'll requierd to enter some config.
 
 And just follow the echo words.
+# How to login with your own cookies?
+#### Login to ***Pixiv*** website with Chrome.
+#### When you successfully redicreted,
+#### Press F12,focus on Network.
+#### Filter with "www.pixiv.net"
+#### Then Press F5.
+#### Log the cookies value.
+
 
 # Yes! Now I can finally free my hands!❤
 #### Try to use a brand new Pixiv collector here.
@@ -22,4 +30,3 @@ And just follow the echo words.
 #### This program is only for personal use only,
 #### Every copy or modified products from this python source should be point that.
 #### Not welcome any stupid pig or computer moron to use it.
-

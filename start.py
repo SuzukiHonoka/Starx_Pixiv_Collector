@@ -148,7 +148,7 @@ def update_user_cookies():
 
     result = s.post(post_url, data=datas, timeout=10)
     result_check = json.loads(result.text)['body']
-
+    print(result_check)
     if 'success' in result_check:
         print('Login success!')
         with open(program_path + 'cookies', 'w+') as f:
@@ -206,7 +206,7 @@ if proxy_enable:
             'https': "socks5://" + proxy_host + ":" + proxy_port
         }
         s.proxies = proxies
-        print(proxies)
+        #print(proxies)
     except Exception as e:
         print('When processing the socks5 server an error occurred.')
         print(e)
@@ -222,7 +222,7 @@ else:
     pixiv_user_cookies_dict = dict(pixiv_user_cookies)
     s.cookies = requests.utils.cookiejar_from_dict(pixiv_user_cookies_dict)
 
-print(s.cookies)
+#print(s.cookies)
 
 # 当前日期
 year_month = time.strftime("%Y%m", time.localtime())

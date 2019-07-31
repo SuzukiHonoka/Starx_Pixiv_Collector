@@ -7,7 +7,7 @@
   2. configparser
   3. bs4
   4. selenium
-# How to use 
+# How to use?
   ```
   python3 start.py
   ```
@@ -15,6 +15,7 @@ You'll requierd to enter some config.
 
 And just follow the echo words.
 # How to login with your own cookies?
+![Only for this situation](https://github.com/SuzukiHonoka/Starx_Pixiv_Collector/blob/master/How_to_1_1.png)
 #### Login to ***Pixiv*** website with Chrome.
 #### When you successfully redicreted,
 #### Press F12,focus on Network.

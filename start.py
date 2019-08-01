@@ -9,7 +9,8 @@ import time
 
 import requests
 from bs4 import BeautifulSoup
-#from selenium import webdriver
+
+# from selenium import webdriver
 
 sys_platform = sys.platform
 
@@ -179,7 +180,7 @@ def update_user_cookies():
             elif where_did_you_get == '2':
                 if input('Did you saved the json file to ' + program_path + ' ?(Y/N):') == 'Y':
                     cookies_file = open(program_path + 'cookies.json', 'r')
-                    cookies =json.loads(cookies_file.read())
+                    cookies = json.loads(cookies_file.read())
                     cookies_file.close()
                     print('Parsing the cookies..')
                     ex_cookies = {}
@@ -256,7 +257,7 @@ else:
 
 # 当前日期
 year_month = time.strftime("%Y%m", time.localtime())
-day = int(time.strftime("%d", time.localtime()))
+day = time.strftime("%d", time.localtime())
 
 # param
 p_date = '&date='
@@ -284,6 +285,7 @@ ranking_types = ['daily', 'weekly', 'monthly', 'rookie', 'male', 'female']
 
 def format_pixiv_ranking_url(year_month, day, page, mode=1):
     ranking_type = "daily"
+    print('Received mode:',mode)
     if mode == 0:
         ranking_type = ranking_types[0]
     elif mode == 1:
@@ -299,7 +301,7 @@ def format_pixiv_ranking_url(year_month, day, page, mode=1):
     else:
         print("Unknown Mode")
         exit()
-
+    print('Type:',ranking_type)
     ranking_url = 'https://www.pixiv.net/ranking.php?mode=' + ranking_type + '&date=' + year_month + str(
         day) + '&p=' + str(
         page) + '&format=json'
@@ -433,7 +435,29 @@ while (True):
         mode_asked = int(input('Please choose the ranking type(0-5):'))
         # 倒序取出可用日期
         start_time = time.time()
-        for i in reversed(range(1, day + 1)):
+        print('Testing available day of mode 1..')
+        for i in reversed(range(1, int(day) + 1)):
+            if i == 1:
+                last_month = int(time.strftime('%m', time.localtime())) - 1
+                print('Changing the month to',str(last_month))
+                if last_month < 10:
+                    last_month = '0' + str(last_month)
+                year_minus_month = time.strftime('%Y', time.localtime()) + str(last_month)
+                for last_i in reversed(range(1, 32)):
+                    print("Changing the day param to :", last_i)
+                    ranking_daily_json = s.get(format_pixiv_ranking_url(year_minus_month, str(last_i), page))
+                    if ranking_daily_json.status_code == 200:
+                        print("Found the available Day at day " + str(last_i))
+                        print('Final ranking date:', year_minus_month + str(last_i))
+                        year_month=year_minus_month
+                        day = last_i
+                        break
+                    else:
+                        print("Error Status code:", ranking_daily_json.status_code, "at day " + str(i))
+                break
+            if i < 10:
+                print('Auto add zero..')
+                i = '0' + str(i)
             print("Changing day param to :", i)
             ranking_daily_json = s.get(format_pixiv_ranking_url(year_month, i, page))
             if ranking_daily_json.status_code == 200:
@@ -446,6 +470,7 @@ while (True):
         # 共10页json
         for i in range(1, max_page + 1):
             print("Catching Page:", i)
+            print('You selected:', mode_asked)
             url = format_pixiv_ranking_url(year_month, day, i, mode_asked)
             print("URL TARGET: " + url)
             json_source_contents = s.get(url)
@@ -488,13 +513,13 @@ while (True):
                     print('Single Download start!!')
                     pic_url = format_pixiv_illust_original_url(format_pixiv_illust_url(illust_id))
                     print('Picture source address:', pic_url)
-                    download_thread(pic_url, save_path, title, ranking_types[mode_asked])
+                    download_thread(pic_url, save_path, title, ranking_types[mode_asked] + global_symbol + year_month + str(day))
                 elif illust_type_code == '1':
                     print('Multiple Download start!!')
                     data_listed = format_pixiv_illust_original_url(format_multi_illust_json_url(illust_id), 2)
                     for each_one in data_listed:
                         print('One of Multiple Picture source address:', each_one)
-                        download_thread(each_one, save_path, title, ranking_types[mode_asked] + '/M-' + str(illust_id))
+                        download_thread(each_one, save_path, title, ranking_types[mode_asked] + global_symbol +year_month +str(day) +global_symbol + 'M-' + str(illust_id))
 
         print('Job finished!')
         print('Total cost:', time.time() - start_time)
@@ -508,19 +533,16 @@ while (True):
         total_ids = len(illusts_ids)
         download_count = 0
         for single_illust in illusts_ids:
-            # illust_name = get_illust_name_frome_illust_url(format_pixiv_illust_url(single_illust))
             download_count += 1
             print("Downloading", str(download_count), "of", total_ids)
             download_thread(format_pixiv_illust_original_url(format_pixiv_illust_url(single_illust)),
                             save_path, get_illust_name_from_illust_url(format_pixiv_illust_url(single_illust)),
                             str(target_user_id))
         print('\nALL Done')
-        # print(type(illusts_ids),len(illusts_ids))
     elif choose == '3':
         print('Catching your bookmark..')
         bookmark = s.get('https://www.pixiv.net/bookmark.php', timeout=10)
         bookmark.raise_for_status()
-        # bookmark_data=json.loads(bookmark.text)
         soup = BeautifulSoup(bookmark.text, 'html.parser')
 
         book_pages = soup.find(name='ul', attrs={'class': 'page-list'})
@@ -535,9 +557,7 @@ while (True):
             bookmark_datas = per_soup.find(name='ul', attrs={'class': '_image-items js-legacy-mark-unmark-list'})
             print(len(bookmark_datas))
             for marked_illust_id in bookmark_datas:
-                # each_marked_illust = marked_illust_id.find(name='a', attrs={'class': 'work _work'})
                 switch = marked_illust_id.a['class']
-                # print(type(marked_illust_id))
                 start_time = time.time()
                 if switch == ['work', '_work']:
                     illust_type = 'Single'

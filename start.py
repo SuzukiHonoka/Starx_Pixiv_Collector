@@ -6,6 +6,7 @@ import os
 import re
 import sys
 import time
+from tqdm import tqdm
 
 import requests
 from bs4 import BeautifulSoup
@@ -43,6 +44,7 @@ pixiv_user_pass = ''
 pixiv_user_cookies = ''
 piviv_user_cookies_is_not_empty = False
 cust_path_enable = False
+Show_info = False
 
 #
 if not os.path.exists('config.ini'):
@@ -59,6 +61,8 @@ if not os.path.exists('config.ini'):
         cust_path_enable = True
         save_path = input("Please enter the full path to save the data:") + global_symbol
     if input('Are you sure about that account information correct? (Y/N):') == 'Y':
+        # OPTIONAL
+        show_info = input('Do you want to show the each illust info when downloading?(Y/N):')
         if input('Do you want to save this configuration as a file? (Y/N):') == 'Y':
             path = program_path
             config_name = "config.ini"
@@ -77,6 +81,8 @@ if not os.path.exists('config.ini'):
             config.add_section('Data')
             config.set('Data', 'CUST_PATH_ENABLE', cust_path_enable)
             config.set('Data', 'SAVE_PATH', save_path)
+            if show_info == 'Y':
+                config.set('Data', 'Show_info', 'True')
             with open(abs_path, 'w+') as f:
                 config.write(f)
         print('Done!')
@@ -92,6 +98,8 @@ else:
     cust_path_enable = config['Data']['CUST_PATH_ENABLE']
     if cust_path_enable:
         save_path = config['Data']['SAVE_PATH']
+    if config['Data']['Show_info'] == 'True':
+        Show_info = True
 
 if os.path.exists("cookies"):
     with open('cookies', 'r') as f:
@@ -328,11 +336,12 @@ def get_pixiv_user_name():
     try:
         check_soup = BeautifulSoup(s.get(pixiv_www_url).text, 'html.parser')
         pixiv_user_nick_name = check_soup.find(name='a', attrs={'class': 'user-name js-click-trackable-later'}).string
-        print('Login as',pixiv_user_nick_name)
+        print('Login as', pixiv_user_nick_name)
     except Exception as e:
         print('An error occurred when checking the cookies.')
         print('Probably case the saved cookies is invalid.')
         print(e)
+
 
 #
 '''
@@ -454,38 +463,45 @@ while (True):
     if choose == '1':
         mode_asked = int(input('Please choose the ranking type(0-9):'))
         # 倒序取出可用日期
+        if input('Do you want to choose a date?(Y/N):') == 'Y':
+            choose_date = input('Please enter the date like 2019-01-01:')
+            date_dict = choose_date.split('-')
+            year_month = date_dict[0] + date_dict[1]
+            day = date_dict[2]
+        else:
+            print('Testing available day of mode 1..')
+            for i in reversed(range(1, int(day) + 1)):
+                if i == 1:
+                    last_month = int(time.strftime('%m', time.localtime())) - 1
+                    print('Changing the month to', str(last_month))
+                    if last_month < 10:
+                        last_month = '0' + str(last_month)
+                    year_minus_month = time.strftime('%Y', time.localtime()) + str(last_month)
+                    for last_i in reversed(range(1, 32)):
+                        print("Changing the day param to :", last_i)
+                        ranking_daily_json = s.get(format_pixiv_ranking_url(year_minus_month, str(last_i), page))
+                        if ranking_daily_json.status_code == 200:
+                            print("Found the available Day at day " + str(last_i))
+                            print('Final ranking date:', year_minus_month + str(last_i))
+                            year_month = year_minus_month
+                            day = last_i
+                            break
+                        else:
+                            print("Error Status code:", ranking_daily_json.status_code, "at day " + str(i))
+                    break
+                if i < 10:
+                    print('Auto add zero..')
+                    i = '0' + str(i)
+                print("Changing day param to :", i)
+                ranking_daily_json = s.get(format_pixiv_ranking_url(year_month, i, page))
+                if ranking_daily_json.status_code == 200:
+                    print("Found the available Day at day " + str(i))
+                    day = i
+                    break
+                else:
+                    print("Error Status code:", ranking_daily_json.status_code, "at day " + str(i))
+
         start_time = time.time()
-        print('Testing available day of mode 1..')
-        for i in reversed(range(1, int(day) + 1)):
-            if i == 1:
-                last_month = int(time.strftime('%m', time.localtime())) - 1
-                print('Changing the month to', str(last_month))
-                if last_month < 10:
-                    last_month = '0' + str(last_month)
-                year_minus_month = time.strftime('%Y', time.localtime()) + str(last_month)
-                for last_i in reversed(range(1, 32)):
-                    print("Changing the day param to :", last_i)
-                    ranking_daily_json = s.get(format_pixiv_ranking_url(year_minus_month, str(last_i), page))
-                    if ranking_daily_json.status_code == 200:
-                        print("Found the available Day at day " + str(last_i))
-                        print('Final ranking date:', year_minus_month + str(last_i))
-                        year_month = year_minus_month
-                        day = last_i
-                        break
-                    else:
-                        print("Error Status code:", ranking_daily_json.status_code, "at day " + str(i))
-                break
-            if i < 10:
-                print('Auto add zero..')
-                i = '0' + str(i)
-            print("Changing day param to :", i)
-            ranking_daily_json = s.get(format_pixiv_ranking_url(year_month, i, page))
-            if ranking_daily_json.status_code == 200:
-                print("Found the available Day at day " + str(i))
-                day = i
-                break
-            else:
-                print("Error Status code:", ranking_daily_json.status_code, "at day " + str(i))
         #
         # 共10页json
         for i in range(1, max_page + 1):

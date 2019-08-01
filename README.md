@@ -17,14 +17,18 @@ And just follow the echo words.
 ### Download the selected ranking pics (1)
 #### There will has six type to let you select.
 #### Mode:
-    0. Daily
+    0. daily
     1. weekly
     2. monthly
     3. rookie
     4. male
     5. female
+    6. Daily_r18
+    7. weekly_r18
+    8. male_r18
+    9. female_r18
 #### 
-
+### Tips: When auto testing the available day function started,the mode will use mode 0.
 ### Download the pics from a user (2)
 #### Just give a user id,
 #### Then it will automatic start the download!!

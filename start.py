@@ -197,8 +197,6 @@ def update_user_cookies():
                 else:
                     print('Bye!!')
                     exit()
-
-
         else:
             print('Bye!!')
             exit()
@@ -324,6 +322,18 @@ def format_pixiv_illust_url(illust_id):
     return illust_url
 
 
+def get_pixiv_user_name():
+    # Check if cookies works.
+    pixiv_www_url = 'https://www.pixiv.net/'
+    try:
+        check_soup = BeautifulSoup(s.get(pixiv_www_url).text, 'html.parser')
+        pixiv_user_nick_name = check_soup.find(name='a', attrs={'class': 'user-name js-click-trackable-later'}).string
+        print('Login as',pixiv_user_nick_name)
+    except Exception as e:
+        print('An error occurred when checking the cookies.')
+        print('Probably case the saved cookies is invalid.')
+        print(e)
+
 #
 '''
  mode:
@@ -433,6 +443,7 @@ def download_thread(url, path, exfile_name=None, exfile_dir=None):
 
 
 while (True):
+    get_pixiv_user_name()
     print('What do you want to do?')
     print("Download the selected ranking pics(1)")
     print("Download the pics from a user(2)")

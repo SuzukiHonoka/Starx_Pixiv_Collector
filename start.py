@@ -6,7 +6,6 @@ import os
 import re
 import sys
 import time
-from tqdm import tqdm
 
 import requests
 from bs4 import BeautifulSoup
@@ -44,7 +43,6 @@ pixiv_user_pass = ''
 pixiv_user_cookies = ''
 piviv_user_cookies_is_not_empty = False
 cust_path_enable = False
-Show_info = False
 
 #
 if not os.path.exists('config.ini'):
@@ -62,7 +60,6 @@ if not os.path.exists('config.ini'):
         save_path = input("Please enter the full path to save the data:") + global_symbol
     if input('Are you sure about that account information correct? (Y/N):') == 'Y':
         # OPTIONAL
-        show_info = input('Do you want to show the each illust info when downloading?(Y/N):')
         if input('Do you want to save this configuration as a file? (Y/N):') == 'Y':
             path = program_path
             config_name = "config.ini"
@@ -81,8 +78,6 @@ if not os.path.exists('config.ini'):
             config.add_section('Data')
             config.set('Data', 'CUST_PATH_ENABLE', cust_path_enable)
             config.set('Data', 'SAVE_PATH', save_path)
-            if show_info == 'Y':
-                config.set('Data', 'Show_info', 'True')
             with open(abs_path, 'w+') as f:
                 config.write(f)
         print('Done!')
@@ -98,8 +93,6 @@ else:
     cust_path_enable = config['Data']['CUST_PATH_ENABLE']
     if cust_path_enable:
         save_path = config['Data']['SAVE_PATH']
-    if config['Data']['Show_info'] == 'True':
-        Show_info = True
 
 if os.path.exists("cookies"):
     with open('cookies', 'r') as f:
@@ -565,6 +558,7 @@ while (True):
                         download_thread(each_one, save_path, title,
                                         ranking_types[mode_asked] + global_symbol + year_month + str(
                                             day) + global_symbol + 'M-' + str(illust_id))
+
 
         print('Job finished!')
         print('Total cost:', time.time() - start_time)

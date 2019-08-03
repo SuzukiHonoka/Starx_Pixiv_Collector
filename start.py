@@ -139,7 +139,19 @@ s = requests.Session()
 def update_user_cookies():
     s.cookies.clear()
     # 获取登录页面
-    res = s.get(login_url, params=params, timeout=10)
+    retry = 0
+    while True:
+        try:
+            if retry > 3:
+                print('Max retried reached')
+                exit()
+            retry += 1
+            res = s.get(login_url, params=params, timeout=10)
+        except Exception as e:
+            print('An error occurred When getting the login post key.')
+            print('Retry count:', retry)
+        else:
+            break
     res.raise_for_status()
 
     pattern = re.compile(r'name="post_key" value="(.*?)">')
@@ -326,14 +338,23 @@ def format_pixiv_illust_url(illust_id):
 def get_pixiv_user_name():
     # Check if cookies works.
     pixiv_www_url = 'https://www.pixiv.net/'
-    try:
-        check_soup = BeautifulSoup(s.get(pixiv_www_url).text, 'html.parser')
-        pixiv_user_nick_name = check_soup.find(name='a', attrs={'class': 'user-name js-click-trackable-later'}).string
-        print('Login as', pixiv_user_nick_name)
-    except Exception as e:
-        print('An error occurred when checking the cookies.')
-        print('Probably case the saved cookies is invalid.')
-        print(e)
+    retry = 0
+    while True:
+        try:
+            if retry > 3:
+                print('Max retried reached')
+                exit()
+            retry += 1
+            check_soup = BeautifulSoup(s.get(pixiv_www_url).text, 'html.parser')
+            pixiv_user_nick_name = check_soup.find(name='a',
+                                                   attrs={'class': 'user-name js-click-trackable-later'}).string
+            print('Login as', pixiv_user_nick_name)
+        except Exception as e:
+            print('An error occurred when checking the cookies.')
+            print('Probably case the saved cookies is invalid.')
+            print(e)
+        else:
+            break
 
 
 #
@@ -346,19 +367,43 @@ def get_pixiv_user_name():
 
 def format_pixiv_illust_original_url(id_url, mode=1):
     if mode == 1:
-        contents = s.get(id_url, params=params)
+        retry=0
+        while True:
+            try:
+                if retry > 3:
+                    print('Max retried reached')
+                    exit()
+                retry += 1
+                contents = s.get(id_url, params=params)
+            except Exception as e:
+                print('An error occurred when getting the original json file.')
+                print(e)
+            else:
+                break
         contents.raise_for_status()
         try:
             img_src_re = re.compile(r'\"urls\":{.*?}')
             img_src = img_src_re.findall(contents.text)
             final_dict = json.loads("{" + img_src[0] + "}")
             return final_dict['urls']['original']
-        except:
-            print("Error")
-            print(contents.text)
+        except Exception as e:
+            print("An error occurred when parsing the json file.")
+            print(e)
     elif mode == 2:
         data_list = []
-        json_datas = s.get(id_url, params=params)
+        retry=0
+        while True:
+            try:
+                if retry > 3:
+                    print('Max retried reached')
+                    exit()
+                retry += 1
+                json_datas = s.get(id_url, params=params)
+            except Exception as e:
+                print('An error occurred when getting the original json file.')
+                print(e)
+            else:
+                break
         json_datas.raise_for_status()
         json_datas_format = json.loads(json_datas.text)['body']
         for urls in json_datas_format:
@@ -373,8 +418,19 @@ def format_pixiv_user_profile_all_url(target_user_id):
 
 
 def get_illust_name_from_illust_url(url):
-    print(url)
-    illust_url_content = s.get(url, timeout=10)
+    retry=0
+    while True:
+        try:
+            if retry > 3:
+                print('Max retried reached')
+                exit()
+            retry += 1
+            illust_url_content = s.get(url, timeout=10)
+        except Exception as e:
+            print('An error occurred when getting the illust index.')
+            print(e)
+        else:
+            break
     illust_url_content.raise_for_status()
     illust_url_content.encoding = 'unicode_escape'
     img_name_re = re.compile(r'\"userIllusts\":{.*?}')
@@ -397,23 +453,33 @@ def format_multi_illust_json_url(multi_illust_id):
 def download_file(url, path):
     print("\nThread ID:" + str(_thread.get_ident()))
     path_output = path
-
-    with s.get(url, stream=True) as pic:
-        pic.raise_for_status()
-        if os.path.exists(path_output):
-            print("File exists:" + path_output, "\nSkip!")
-            return False
+    retry=0
+    while True:
         try:
-            with open(path_output, 'wb') as f:
-                for chunk in pic.iter_content(chunk_size=1024):
-                    if chunk:
-                        f.write(chunk)
-        except:
-            return False
+            if retry > 3:
+                print('Max retried reached')
+                exit()
+            retry += 1
+            with s.get(url, stream=True) as pic:
+                pic.raise_for_status()
+                if os.path.exists(path_output):
+                    print("File exists:" + path_output, "\nSkip!")
+                    return False
+                try:
+                    with open(path_output, 'wb') as f:
+                        for chunk in pic.iter_content(chunk_size=1024):
+                            if chunk:
+                                f.write(chunk)
+                except Exception as e:
+                    print('An error occurred when saving files.')
+                    print(e)
+                else:
+                    print("File Saved:" + path_output)
+        except Exception as e:
+            print('An error occurred when Downloading files.')
+            print(e)
         else:
-            print("File Saved:" + path_output)
-        return True
-
+            return True
 
 def download_thread(url, path, exfile_name=None, exfile_dir=None):
     local_path = path
@@ -472,7 +538,20 @@ while (True):
                     year_minus_month = time.strftime('%Y', time.localtime()) + str(last_month)
                     for last_i in reversed(range(1, 32)):
                         print("Changing the day param to :", last_i)
-                        ranking_daily_json = s.get(format_pixiv_ranking_url(year_minus_month, str(last_i), page))
+                        retry = 0
+                        while True:
+                            try:
+                                if retry > 3:
+                                    print('Max retried reached')
+                                    exit()
+                                retry += 1
+                                ranking_daily_json = s.get(
+                                    format_pixiv_ranking_url(year_minus_month, str(last_i), page))
+                            except Exception as e:
+                                print('An error occurred when getting the ranking index.')
+                                print(e)
+                            else:
+                                break
                         if ranking_daily_json.status_code == 200:
                             print("Found the available Day at day " + str(last_i))
                             print('Final ranking date:', year_minus_month + str(last_i))
@@ -486,7 +565,19 @@ while (True):
                     print('Auto add zero..')
                     i = '0' + str(i)
                 print("Changing day param to :", i)
-                ranking_daily_json = s.get(format_pixiv_ranking_url(year_month, i, page))
+                retry = 0
+                while True:
+                    try:
+                        if retry > 3:
+                            print('Max retried reached')
+                            exit()
+                        retry += 1
+                        ranking_daily_json = s.get(format_pixiv_ranking_url(year_month, i, page))
+                    except Exception as e:
+                        print('An error occurred when getting the ranking index.')
+                        print(e)
+                    else:
+                        break
                 if ranking_daily_json.status_code == 200:
                     print("Found the available Day at day " + str(i))
                     day = i
@@ -502,7 +593,19 @@ while (True):
             print('You selected:', mode_asked)
             url = format_pixiv_ranking_url(year_month, day, i, mode_asked)
             print("URL TARGET: " + url)
-            json_source_contents = s.get(url)
+            retry = 0
+            while True:
+                try:
+                    if retry > 3:
+                        print('Max retried reached')
+                        exit()
+                    retry += 1
+                    json_source_contents = s.get(url)
+                except Exception as e:
+                    print('An error occurred when getting the per page json file.')
+                    print(e)
+                else:
+                    break
             try:
                 json_source_contents.raise_for_status()
             except Exception as e:
@@ -559,12 +662,23 @@ while (True):
                                         ranking_types[mode_asked] + global_symbol + year_month + str(
                                             day) + global_symbol + 'M-' + str(illust_id))
 
-
         print('Job finished!')
         print('Total cost:', time.time() - start_time)
     elif choose == '2':
         target_user_id = int(input("Please enter the target user id(like 17300903):"))
-        profile_all = s.get(format_pixiv_user_profile_all_url(target_user_id))
+        retry = 0
+        while True:
+            try:
+                if retry > 3:
+                    print('Max retried reached')
+                    exit()
+                retry += 1
+                profile_all = s.get(format_pixiv_user_profile_all_url(target_user_id))
+            except Exception as e:
+                print('An error occurred when getting the profile all index.')
+                print(e)
+            else:
+                break
         profile_all.raise_for_status()
         profile_all_json = json.loads(profile_all.text)
         all_illusts = profile_all_json['body']['illusts']
@@ -580,7 +694,19 @@ while (True):
         print('\nALL Done')
     elif choose == '3':
         print('Catching your bookmark..')
-        bookmark = s.get('https://www.pixiv.net/bookmark.php', timeout=10)
+        retry = 0
+        while True:
+            try:
+                if retry > 3:
+                    print('Max retried reached')
+                    exit()
+                retry += 1
+                bookmark = s.get('https://www.pixiv.net/bookmark.php', timeout=10)
+            except Exception as e:
+                print('An error occurred when getting the bookmark index')
+                print(e)
+            else:
+                break
         bookmark.raise_for_status()
         soup = BeautifulSoup(bookmark.text, 'html.parser')
 
@@ -591,7 +717,19 @@ while (True):
 
         for single_page in range(1, book_total_page + 1):
             print('Starting bookmark download for page', str(single_page), 'of', book_total_page)
-            per_page = s.get(format_book_page_url + str(single_page))
+            retry = 0
+            while True:
+                try:
+                    if retry > 3:
+                        print('Max retried reached')
+                        exit()
+                    retry += 1
+                    per_page = s.get(format_book_page_url + str(single_page))
+                except Exception as e:
+                    print('An error occurred when getting the per page bookmark index.')
+                    print(e)
+                else:
+                    break
             per_soup = BeautifulSoup(per_page.text, 'html.parser')
             bookmark_datas = per_soup.find(name='ul', attrs={'class': '_image-items js-legacy-mark-unmark-list'})
             print(len(bookmark_datas))
@@ -649,8 +787,7 @@ while (True):
                         print('Start downloading multiple picture..')
                         print('Single_URL:', each_one)
                         download_thread(each_one, save_path, title, 'Bookmark/M-' + illust_id)
-                    print('Total cost:', time.time() - start_time)
-                    print('ALL DONE!')
+                print('Total cost:', time.time() - start_time)
         print('ALL DONE!')
     elif choose == '4':
         update_user_cookies()

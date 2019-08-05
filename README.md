@@ -6,6 +6,7 @@
   1. requests
   2. configparser
   3. bs4
+  4. imageio
 # How to run it?
   ```
   python3 start.py
@@ -15,7 +16,7 @@ You'll requierd to enter some config.
 And just follow the echo words.
 # What can it do?
 ### Download the selected ranking pics (1)
-#### There will has six type to let you select.
+#### There will has ten type to let you select.
 #### Mode:
     0. daily
     1. weekly

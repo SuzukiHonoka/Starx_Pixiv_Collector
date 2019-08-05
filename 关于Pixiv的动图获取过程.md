@@ -13,8 +13,9 @@
  3. **frames**
 
 ## 基于Python的动图合成过程
-### 依赖:imageio
-### 代码:
+### 依赖
+#### imageio
+### 代码
 
 ```python
 import imageio

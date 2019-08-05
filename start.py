@@ -9,6 +9,8 @@ import time
 
 import requests
 from bs4 import BeautifulSoup
+import zipfile
+import imageio
 
 # from selenium import webdriver
 
@@ -90,8 +92,8 @@ else:
     proxy_port = config['Proxy']['PORT']
     pixiv_user_name = config['Account']['User_name']
     pixiv_user_pass = config['Account']['User_pass']
-    cust_path_enable = config['Data']['CUST_PATH_ENABLE']
-    if cust_path_enable:
+    if config['Data']['CUST_PATH_ENABLE'] == 'True':
+        cust_path_enable = True
         save_path = config['Data']['SAVE_PATH']
 
 if os.path.exists("cookies"):
@@ -367,7 +369,7 @@ def get_pixiv_user_name():
 
 def format_pixiv_illust_original_url(id_url, mode=1):
     if mode == 1:
-        retry=0
+        retry = 0
         while True:
             try:
                 if retry > 3:
@@ -391,7 +393,7 @@ def format_pixiv_illust_original_url(id_url, mode=1):
             print(e)
     elif mode == 2:
         data_list = []
-        retry=0
+        retry = 0
         while True:
             try:
                 if retry > 3:
@@ -418,7 +420,7 @@ def format_pixiv_user_profile_all_url(target_user_id):
 
 
 def get_illust_name_from_illust_url(url):
-    retry=0
+    retry = 0
     while True:
         try:
             if retry > 3:
@@ -453,7 +455,7 @@ def format_multi_illust_json_url(multi_illust_id):
 def download_file(url, path):
     print("\nThread ID:" + str(_thread.get_ident()))
     path_output = path
-    retry=0
+    retry = 0
     while True:
         try:
             if retry > 3:
@@ -480,6 +482,7 @@ def download_file(url, path):
             print(e)
         else:
             return True
+
 
 def download_thread(url, path, exfile_name=None, exfile_dir=None):
     local_path = path
@@ -661,6 +664,29 @@ while (True):
                         download_thread(each_one, save_path, title,
                                         ranking_types[mode_asked] + global_symbol + year_month + str(
                                             day) + global_symbol + 'M-' + str(illust_id))
+                elif illust_type_code == '2':
+                    print('Dynamic Download start!')
+                    d_json_data = 'https://www.pixiv.net/ajax/illust/' + illust_id + '/ugoira_meta'
+                    d_json_decoded = json.loads(d_json_data.text)['body']
+                    src_zip_url = d_json_decoded['originalSrc']
+                    src_mime_type = d_json_decoded['mime_type']
+                    src_img_delay = int(d_json_decoded['frames'][0]['delay'])/1000
+                    src_saved_path = save_path + global_symbol + 'TEMP' + global_symbol + src_zip_url.split('/')[-1]
+                    src_saved_dir = save_path + global_symbol + 'TEMP' + global_symbol + str(illust_id)+global_symbol
+                    src_final_dir = save_path+global_symbol+'Dynamic'+global_symbol
+                    download_thread(src_zip_url, save_path, None, 'TEMP' + global_symbol + str(illust_id))
+                    while not os.path.exists(src_saved_path):
+                        time.sleep(1)
+                        print('Waiting for complete...')
+                    print('Zip target downloaded:', src_saved_path)
+                    with zipfile.ZipFile(src_saved_path, 'r') as zip_file:
+                        zip_file.extractall(path=src_saved_dir)
+                    # get each frame
+                    frames = []
+                    for root, dirs, files in os.walk(src_saved_dir):
+                        frames.append(imageio.imread(files))
+                    imageio.mimsave(title+'-'+str(illust_id)+'.gif',frames,duration=src_img_delay)
+                    print('Dynamic saved.')
 
         print('Job finished!')
         print('Total cost:', time.time() - start_time)

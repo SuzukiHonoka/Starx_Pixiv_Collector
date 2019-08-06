@@ -671,9 +671,9 @@ while (True):
                     src_zip_url = d_json_decoded['originalSrc']
                     src_mime_type = d_json_decoded['mime_type']
                     src_img_delay = int(d_json_decoded['frames'][0]['delay'])/1000
-                    src_saved_path = save_path + global_symbol + 'TEMP' + global_symbol + src_zip_url.split('/')[-1]
-                    src_saved_dir = save_path + global_symbol + 'TEMP' + global_symbol + str(illust_id)+global_symbol
-                    src_final_dir = save_path+global_symbol+'Dynamic'+global_symbol
+                    src_saved_path = save_path + 'TEMP' + global_symbol + str(illust_id)+global_symbol + src_zip_url.split('/')[-1]
+                    src_saved_dir = save_path + 'TEMP' + global_symbol + str(illust_id) + global_symbol
+                    src_final_dir = save_path + 'Dynamic'+global_symbol
                     download_thread(src_zip_url, save_path, None, 'TEMP' + global_symbol + str(illust_id))
                     while not os.path.exists(src_saved_path):
                         time.sleep(1)
@@ -682,9 +682,16 @@ while (True):
                     with zipfile.ZipFile(src_saved_path, 'r') as zip_file:
                         zip_file.extractall(path=src_saved_dir)
                     # get each frame
+                    sort_by_num=[]
                     frames = []
                     for root, dirs, files in os.walk(src_saved_dir):
-                        frames.append(imageio.imread(files))
+                        for file in files:
+                            if file.endswith('jpg') or file.endswith('png'):
+                                sort_by_num.append(src_saved_dir + global_symbol + file)
+                    sort_by_num.sort()
+                    print('sorted:',sort_by_num)
+                    for each_frame in sort_by_num:
+                        frames.append(imageio.imread(each_frame))
                     imageio.mimsave(title+'-'+str(illust_id)+'.gif',frames,duration=src_img_delay)
                     print('Dynamic saved.')
 

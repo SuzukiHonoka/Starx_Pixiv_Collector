@@ -452,7 +452,7 @@ def format_multi_illust_json_url(multi_illust_id):
     return multi_illust_json_url
 
 
-def download_file(url, path,sign=False):
+def download_file(url, path, sign=False):
     print("\nThread ID:" + str(_thread.get_ident()))
     path_output = path
     retry = 0
@@ -478,12 +478,12 @@ def download_file(url, path,sign=False):
                 else:
                     print("File Saved:" + path_output)
                     if sign:
-                        with open(path_output+'.done','w+') as f:
+                        with open(path_output + '.done', 'w+') as f:
                             f.write('Done!')
                             print('Created a sign for main thread.')
 
-                        
-                    
+
+
         except Exception as e:
             print('An error occurred when Downloading files.')
             print(e)
@@ -510,7 +510,7 @@ def download_thread(url, path, exfile_name=None, exfile_dir=None):
     retry_count = 0
     try:
         _thread.TIMEOUT_MAX = 10000
-        _thread.start_new_thread(download_file, (url, path_output,give_it_a_sign))
+        _thread.start_new_thread(download_file, (url, path_output, give_it_a_sign))
     except:
         print("Error..")
         if retry_count >= 3:
@@ -686,7 +686,7 @@ while (True):
                     src_saved_dir = save_path + 'TEMP' + global_symbol + str(illust_id) + global_symbol
                     src_final_dir = save_path + 'Dynamic' + global_symbol
                     download_thread(src_zip_url, save_path, None, 'TEMP' + global_symbol + str(illust_id))
-                    while not os.path.exists(src_saved_path+'.done'):
+                    while not os.path.exists(src_saved_path + '.done'):
                         time.sleep(1)
                         print('Waiting for complete...')
                     print('Zip target downloaded:', src_saved_path)
@@ -703,9 +703,12 @@ while (True):
                     print('sorted:', sort_by_num)
                     for each_frame in sort_by_num:
                         frames.append(imageio.imread(each_frame))
-                    gif_save_path = save_path + ranking_types[mode_asked] + global_symbol + year_month + str(
-                        day) + global_symbol + 'D-' + str(illust_id) + title + '-' + str(illust_id) + '.gif'
-                    imageio.mimsave(gif_save_path, frames, duration=src_img_delay)
+                    gif_save_dir = save_path + ranking_types[mode_asked] + global_symbol + year_month + str(
+                        day) + global_symbol
+                    gif_name_format = 'D-' + str(illust_id) + title + '-' + str(illust_id) + '.gif'
+                    if not os.path.exists(gif_save_dir):
+                        os.makedirs(gif_save_dir)
+                    imageio.mimsave(gif_save_dir + gif_name_format, frames, duration=src_img_delay)
                     print('Dynamic saved.')
 
         print('Job finished!')

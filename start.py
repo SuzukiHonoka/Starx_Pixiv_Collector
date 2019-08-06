@@ -452,7 +452,7 @@ def format_multi_illust_json_url(multi_illust_id):
     return multi_illust_json_url
 
 
-def download_file(url, path):
+def download_file(url, path,sign=False):
     print("\nThread ID:" + str(_thread.get_ident()))
     path_output = path
     retry = 0
@@ -477,6 +477,13 @@ def download_file(url, path):
                     print(e)
                 else:
                     print("File Saved:" + path_output)
+                    if sign:
+                        with open(path_output+'.done','w+') as f:
+                            f.write('Done!')
+                            print('Created a sign for main thread.')
+
+                        
+                    
         except Exception as e:
             print('An error occurred when Downloading files.')
             print(e)
@@ -486,7 +493,10 @@ def download_file(url, path):
 
 def download_thread(url, path, exfile_name=None, exfile_dir=None):
     local_path = path
+    give_it_a_sign = False
     local_filename = url.split('/')[-1]
+    if local_filename.endswith('zip'):
+        give_it_a_sign = True
     if exfile_dir is not None:
         local_path += global_symbol + exfile_dir + global_symbol
     if exfile_name is not None:
@@ -500,7 +510,7 @@ def download_thread(url, path, exfile_name=None, exfile_dir=None):
     retry_count = 0
     try:
         _thread.TIMEOUT_MAX = 10000
-        _thread.start_new_thread(download_file, (url, path_output))
+        _thread.start_new_thread(download_file, (url, path_output,give_it_a_sign))
     except:
         print("Error..")
         if retry_count >= 3:
@@ -670,29 +680,32 @@ while (True):
                     d_json_decoded = json.loads(s.get(d_json_data).text)['body']
                     src_zip_url = d_json_decoded['originalSrc']
                     src_mime_type = d_json_decoded['mime_type']
-                    src_img_delay = int(d_json_decoded['frames'][0]['delay'])/1000
-                    src_saved_path = save_path + 'TEMP' + global_symbol + str(illust_id)+global_symbol + src_zip_url.split('/')[-1]
+                    src_img_delay = int(d_json_decoded['frames'][0]['delay']) / 1000
+                    src_saved_path = save_path + 'TEMP' + global_symbol + str(illust_id) + global_symbol + \
+                                     src_zip_url.split('/')[-1]
                     src_saved_dir = save_path + 'TEMP' + global_symbol + str(illust_id) + global_symbol
-                    src_final_dir = save_path + 'Dynamic'+global_symbol
+                    src_final_dir = save_path + 'Dynamic' + global_symbol
                     download_thread(src_zip_url, save_path, None, 'TEMP' + global_symbol + str(illust_id))
-                    while not os.path.exists(src_saved_path):
+                    while not os.path.exists(src_saved_path+'.done'):
                         time.sleep(1)
                         print('Waiting for complete...')
                     print('Zip target downloaded:', src_saved_path)
                     with zipfile.ZipFile(src_saved_path, 'r') as zip_file:
                         zip_file.extractall(path=src_saved_dir)
                     # get each frame
-                    sort_by_num=[]
+                    sort_by_num = []
                     frames = []
                     for root, dirs, files in os.walk(src_saved_dir):
                         for file in files:
                             if file.endswith('jpg') or file.endswith('png'):
                                 sort_by_num.append(src_saved_dir + global_symbol + file)
                     sort_by_num.sort()
-                    print('sorted:',sort_by_num)
+                    print('sorted:', sort_by_num)
                     for each_frame in sort_by_num:
                         frames.append(imageio.imread(each_frame))
-                    imageio.mimsave(title+'-'+str(illust_id)+'.gif',frames,duration=src_img_delay)
+                    gif_save_path = save_path + ranking_types[mode_asked] + global_symbol + year_month + str(
+                        day) + global_symbol + 'D-' + str(illust_id) + title + '-' + str(illust_id) + '.gif'
+                    imageio.mimsave(gif_save_path, frames, duration=src_img_delay)
                     print('Dynamic saved.')
 
         print('Job finished!')

@@ -704,8 +704,8 @@ while (True):
                     for each_frame in sort_by_num:
                         frames.append(imageio.imread(each_frame))
                     gif_save_dir = save_path + ranking_types[mode_asked] + global_symbol + year_month + str(
-                        day) + global_symbol
-                    gif_name_format = 'D-' + str(illust_id) + title + '-' + str(illust_id) + '.gif'
+                        day) + global_symbol + 'D-' + str(illust_id) + global_symbol
+                    gif_name_format = title + '-' + str(illust_id) + '.gif'
                     if not os.path.exists(gif_save_dir):
                         os.makedirs(gif_save_dir)
                     imageio.mimsave(gif_save_dir + gif_name_format, frames, duration=src_img_delay)

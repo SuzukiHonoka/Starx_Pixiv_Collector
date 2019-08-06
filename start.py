@@ -666,8 +666,8 @@ while (True):
                                             day) + global_symbol + 'M-' + str(illust_id))
                 elif illust_type_code == '2':
                     print('Dynamic Download start!')
-                    d_json_data = 'https://www.pixiv.net/ajax/illust/' + illust_id + '/ugoira_meta'
-                    d_json_decoded = json.loads(d_json_data.text)['body']
+                    d_json_data = 'https://www.pixiv.net/ajax/illust/' + str(illust_id) + '/ugoira_meta'
+                    d_json_decoded = json.loads(s.get(d_json_data).text)['body']
                     src_zip_url = d_json_decoded['originalSrc']
                     src_mime_type = d_json_decoded['mime_type']
                     src_img_delay = int(d_json_decoded['frames'][0]['delay'])/1000

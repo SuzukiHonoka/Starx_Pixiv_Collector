@@ -700,7 +700,9 @@ while (True):
                             if file.endswith('jpg') or file.endswith('png'):
                                 sort_by_num.append(src_saved_dir + global_symbol + file)
                     sort_by_num.sort()
-                    print('sorted:', sort_by_num)
+                    #print('sorted:', sort_by_num)
+                    time_start_d_s=time.time()
+                    print('Reading each frame..')
                     for each_frame in sort_by_num:
                         frames.append(imageio.imread(each_frame))
                     gif_save_dir = save_path + ranking_types[mode_asked] + global_symbol + year_month + str(
@@ -708,8 +710,10 @@ while (True):
                     gif_name_format = title + '-' + str(illust_id) + '.gif'
                     if not os.path.exists(gif_save_dir):
                         os.makedirs(gif_save_dir)
+                    print('Synthesizing dynamic images..')
                     imageio.mimsave(gif_save_dir + gif_name_format, frames, duration=src_img_delay)
                     print('Dynamic saved.')
+                    print('Synthesizing cost:', time.time() - time_start_d_s)
 
         print('Job finished!')
         print('Total cost:', time.time() - start_time)

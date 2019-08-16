@@ -39,14 +39,15 @@ And just follow the echo words.
 #### Once you select this functions,
 #### It will automatic start the download!!
 
+### Parse an illust info with given illust id(5)
+#### You need to know your illust id first,
+#### type in then you'll have a huge detail of it.
+
 # What should I do when a lots of errors apperas?
 #### Don't worry,
 #### I have already made a funtion for update the cookies.
 #### Update the user cookies (4)
 
-### Parse an illust info with given illust id(5)
-#### You need to know your illust id first,
-#### type in then you'll have a huge detail of it.
 
 ## How can I exit?
 ### Exit (6)

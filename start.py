@@ -9,6 +9,7 @@ import time
 
 import requests
 from bs4 import BeautifulSoup
+import demjson
 import zipfile
 import imageio
 
@@ -419,7 +420,7 @@ def format_pixiv_user_profile_all_url(target_user_id):
     return profile_all_url
 
 
-def get_illust_name_from_illust_url(url):
+def get_illust_infos_from_illust_url(url):
     data_dict = {}
     retry = 0
     while True:
@@ -435,30 +436,35 @@ def get_illust_name_from_illust_url(url):
         else:
             break
     illust_url_content.raise_for_status()
-    illust_url_content.encoding = 'unicode_escape'
-    # user_id
-    data_dict['user_id'] = json.loads('{' + re.compile(r'\"userId\":\".*?\"').findall(illust_url_content.text)[0] + '}')['userId']
-    # user_name
-    data_dict['user_name'] = json.loads('{' + re.compile(r'\"userName\":\".*?\"').findall(illust_url_content.text)[0] + '}')['userName']
-    # illust_id
-    data_dict['illust_id'] = json.loads('{' + re.compile(r'\"illustId\":\".*?\"').findall(illust_url_content.text)[0]  + '}')['illustId']
-    # illust_name
-    data_dict['illust_title'] = json.loads('{' + re.compile(r'\"illustTitle\":\".*?\"').findall(illust_url_content.text)[0] + '}')['illustTitle']
-    # illust_tag
-    data_dict['illust_tag'] = json.loads('{' + re.compile(r'\"tag\":\".*?\"').findall(illust_url_content.text)[0] + "}")['tag']
-    # illust_type
-    data_dict['illust_type'] = json.loads('{' + re.compile(r'\"illustType\":.').findall(illust_url_content.text)[0] + "}")['illustType']
-    # illust_liked
-    data_dict['illust_liked'] = json.loads('{' + re.compile(r'\"likeData\":.*?,').findall(illust_url_content.text)[0].split(',')[0] + "}")['likeData']
-    # illust_marked_count
-    data_dict['illust_marked_count'] = json.loads('{' + re.compile(r'\"bookmarkCount\":.*?,').findall(illust_url_content.text)[0].split(',')[0] + "}")['bookmarkCount']
-    # illust_liked_count
-    data_dict['illust_liked_count'] = json.loads('{' + re.compile(r'\"likeCount\":.*?,').findall(illust_url_content.text)[0].split(',')[0] + "}")['likeCount']
-    # illust_view_count
-    data_dict['illust_view_count'] = json.loads('{' + re.compile(r'\"viewCount\":.*?,').findall(illust_url_content.text)[0].split(',')[0] + "}")['viewCount']
-    # illust_date
-    data_dict['illust_date'] = json.loads('{' + re.compile(r'\"createDate\":\".*?\"').findall(illust_url_content.text)[0] + '}')['createDate']
-
+    #illust_url_content.encoding = 'unicode_escape'
+    json_data = re.compile(r'\)\({[\d\D]*,}\);').findall(illust_url_content.text)[0][2:-2]
+    format_json_data = demjson.decode(json_data)
+    illust_info = format_json_data['preload']['illust'][list(dict.keys(format_json_data['preload']['illust']))[0]]
+    # get each value
+    data_dict['illustId'] = illust_info['illustId']
+    data_dict['illustTitle'] = illust_info['illustTitle']
+    data_dict['illustComment'] = illust_info['illustComment']
+    data_dict['createDate'] = illust_info['createDate']
+    data_dict['illustType'] = illust_info['illustType']
+    data_dict['urls'] = illust_info['urls']
+    # data_dict['tags']=illust_info['tags']
+    data_dict['userId'] = illust_info['userId']
+    data_dict['userName'] = illust_info['userName']
+    data_dict['userAccount'] = illust_info['userAccount']
+    data_dict['likeData'] = illust_info['likeData']
+    data_dict['width'] = illust_info['width']
+    data_dict['height'] = illust_info['height']
+    data_dict['pageCount'] = illust_info['pageCount']
+    data_dict['bookmarkCount'] = illust_info['bookmarkCount']
+    data_dict['likeCount'] = illust_info['likeCount']
+    data_dict['commentCount'] = illust_info['commentCount']
+    data_dict['viewCount'] = illust_info['viewCount']
+    data_dict['isOriginal'] = illust_info['isOriginal']
+    per_tags = illust_info['tags']['tags']
+    tags_list = []
+    for tag in range(len(per_tags)):
+        tags_list.append(per_tags[tag]['tag'])
+    data_dict['tags'] = tags_list
     print(data_dict)
     return data_dict
 
@@ -546,8 +552,9 @@ while (True):
     print("Download the pics from a user(2)")
     print('Download the pics that you marked(3)')
     print('Update the user cookies(4)')
-    print('Exit(5)')
-    choose = input("Your choose[1-5]:")
+    print('Parse an illust info with given illustid(5)')
+    print('Exit(6)')
+    choose = input("Your choose[1-6]:")
     if choose == '1':
         mode_asked = int(input('Please choose the ranking type(0-9):'))
         # 倒序取出可用日期
@@ -680,7 +687,8 @@ while (True):
 
                 if illust_type_code == '0':
                     print('Single Download start!!')
-                    pic_url = format_pixiv_illust_original_url(format_pixiv_illust_url(illust_id))
+                    #pic_url = format_pixiv_illust_original_url(format_pixiv_illust_url(illust_id))
+                    pic_url = get_illust_infos_from_illust_url(format_pixiv_illust_url(illust_id))['urls']['original']
                     print('Picture source address:', pic_url)
                     download_thread(pic_url, save_path, title,
                                     ranking_types[mode_asked] + global_symbol + year_month + str(day))
@@ -760,7 +768,7 @@ while (True):
             download_count += 1
             print("Downloading", str(download_count), "of", total_ids)
             download_thread(format_pixiv_illust_original_url(format_pixiv_illust_url(single_illust)),
-                            save_path, get_illust_name_from_illust_url(format_pixiv_illust_url(single_illust))['illust_title'],
+                            save_path, get_illust_infos_from_illust_url(format_pixiv_illust_url(single_illust))['illustTitle'],
                             str(target_user_id))
         print('\nALL Done')
     elif choose == '3':
@@ -863,5 +871,11 @@ while (True):
     elif choose == '4':
         update_user_cookies()
     elif choose == '5':
+        single_illust = input('Please enter the single illust id(like 76073572):')
+        illust_infos=get_illust_infos_from_illust_url(format_pixiv_illust_url(single_illust))
+        print('---------INFO-of-'+single_illust)
+        for each_info in list(dict.keys(illust_infos)):
+            print(each_info+':',str(illust_infos[each_info]))
+    elif choose == '6':
         print('Bye!!')
         exit()

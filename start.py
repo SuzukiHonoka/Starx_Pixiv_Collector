@@ -551,7 +551,7 @@ while (True):
     print("Download the pics from a user(2)")
     print('Download the pics that you marked(3)')
     print('Update the user cookies(4)')
-    print('Parse an illust info with given illustid(5)')
+    print('Parse an illust info with given illust id(5)')
     print('Exit(6)')
     choose = input("Your choose[1-6]:")
     if choose == '1':

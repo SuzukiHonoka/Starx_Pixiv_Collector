@@ -17,7 +17,7 @@ import imageio
 
 sys_platform = sys.platform
 
-print('Welcome to use Pixiv ranking collector !!')
+print('Welcome to use Pixiv ranking collector!!')
 print('This program is powered by Starx.')
 print('Your are using', sys_platform, "platform.")
 
@@ -200,7 +200,6 @@ def update_user_cookies():
                     cookies_file.close()
                     print('Parsing the cookies..')
                     ex_cookies = {}
-                    print(type(cookies))
                     for each_key in cookies:
                         name = each_key['Name raw']
                         value = each_key['Content raw']
@@ -328,7 +327,7 @@ def format_pixiv_ranking_url(year_month, day, page, mode=1):
     ranking_url = 'https://www.pixiv.net/ranking.php?mode=' + ranking_type + '&date=' + year_month + str(
         day) + '&p=' + str(
         page) + '&format=json'
-    print(ranking_url)
+    # print(ranking_url)
     return ranking_url
 
 
@@ -436,7 +435,7 @@ def get_illust_infos_from_illust_url(url):
         else:
             break
     illust_url_content.raise_for_status()
-    #illust_url_content.encoding = 'unicode_escape'
+    # illust_url_content.encoding = 'unicode_escape'
     json_data = re.compile(r'\)\({[\d\D]*,}\);').findall(illust_url_content.text)[0][2:-2]
     format_json_data = demjson.decode(json_data)
     illust_info = format_json_data['preload']['illust'][list(dict.keys(format_json_data['preload']['illust']))[0]]
@@ -465,7 +464,7 @@ def get_illust_infos_from_illust_url(url):
     for tag in range(len(per_tags)):
         tags_list.append(per_tags[tag]['tag'])
     data_dict['tags'] = tags_list
-    print(data_dict)
+    # print(data_dict)
     return data_dict
 
 
@@ -687,17 +686,17 @@ while (True):
 
                 if illust_type_code == '0':
                     print('Single Download start!!')
-                    #pic_url = format_pixiv_illust_original_url(format_pixiv_illust_url(illust_id))
+                    # pic_url = format_pixiv_illust_original_url(format_pixiv_illust_url(illust_id))
                     pic_url = get_illust_infos_from_illust_url(format_pixiv_illust_url(illust_id))['urls']['original']
                     print('Picture source address:', pic_url)
-                    download_thread(pic_url, save_path, title,
+                    download_thread(pic_url, save_path, re.sub('[\/:*?"<>|]', '_', title),
                                     ranking_types[mode_asked] + global_symbol + year_month + str(day))
                 elif illust_type_code == '1':
                     print('Multiple Download start!!')
                     data_listed = format_pixiv_illust_original_url(format_multi_illust_json_url(illust_id), 2)
                     for each_one in data_listed:
                         print('One of Multiple Picture source address:', each_one)
-                        download_thread(each_one, save_path, title,
+                        download_thread(each_one, save_path, re.sub('[\/:*?"<>|]', '_', title),
                                         ranking_types[mode_asked] + global_symbol + year_month + str(
                                             day) + global_symbol + 'M-' + str(illust_id))
                 elif illust_type_code == '2':
@@ -733,11 +732,16 @@ while (True):
                         frames.append(imageio.imread(each_frame))
                     gif_save_dir = save_path + ranking_types[mode_asked] + global_symbol + year_month + str(
                         day) + global_symbol + 'D-' + str(illust_id) + global_symbol
-                    gif_name_format = title + '-' + str(illust_id) + '.gif'
+                    gif_name_format = re.sub('[\/:*?"<>|]', '_', title) + '-' + str(illust_id) + '.gif'
                     if not os.path.exists(gif_save_dir):
                         os.makedirs(gif_save_dir)
                     print('Synthesizing dynamic images..')
-                    imageio.mimsave(gif_save_dir + gif_name_format, frames, duration=src_img_delay)
+                    try:
+                        imageio.mimsave(gif_save_dir + gif_name_format, frames, duration=src_img_delay)
+                    except Exception as e:
+                        print(gif_save_dir + gif_name_format)
+                        print(e)
+                        exit()
                     print('Dynamic saved.')
                     print('Synthesizing cost:', time.time() - time_start_d_s)
 
@@ -768,7 +772,8 @@ while (True):
             download_count += 1
             print("Downloading", str(download_count), "of", total_ids)
             download_thread(format_pixiv_illust_original_url(format_pixiv_illust_url(single_illust)),
-                            save_path, get_illust_infos_from_illust_url(format_pixiv_illust_url(single_illust))['illustTitle'],
+                            save_path,
+                            re.sub('[\/:*?"<>|]', '_', get_illust_infos_from_illust_url(format_pixiv_illust_url(single_illust))['illustTitle']),
                             str(target_user_id))
         print('\nALL Done')
     elif choose == '3':
@@ -837,7 +842,7 @@ while (True):
                     print('Tag:', tag)
                     print('Type:', illust_type)
                     download_thread(format_pixiv_illust_original_url(format_pixiv_illust_url(illust_id)), save_path,
-                                    title,
+                                    re.sub('[\/:*?"<>|]', '_', title),
                                     'Bookmark')
 
                 elif switch == ['work', '_work', 'multiple']:
@@ -865,17 +870,18 @@ while (True):
                     for each_one in data_listed:
                         print('Start downloading multiple picture..')
                         print('Single_URL:', each_one)
-                        download_thread(each_one, save_path, title, 'Bookmark/M-' + illust_id)
+                        download_thread(each_one, save_path, re.sub('[\/:*?"<>|]', '_', title),
+                                        'Bookmark/M-' + illust_id)
                 print('Total cost:', time.time() - start_time)
         print('ALL DONE!')
     elif choose == '4':
         update_user_cookies()
     elif choose == '5':
         single_illust = input('Please enter the single illust id(like 76073572):')
-        illust_infos=get_illust_infos_from_illust_url(format_pixiv_illust_url(single_illust))
-        print('---------INFO-of-'+single_illust)
+        illust_infos = get_illust_infos_from_illust_url(format_pixiv_illust_url(single_illust))
+        print('---------INFO-of-' + single_illust)
         for each_info in list(dict.keys(illust_infos)):
-            print(each_info+':',str(illust_infos[each_info]))
+            print(each_info + ':', str(illust_infos[each_info]))
     elif choose == '6':
         print('Bye!!')
         exit()

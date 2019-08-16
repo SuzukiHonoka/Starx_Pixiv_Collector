@@ -45,7 +45,7 @@ pixiv_user_pass = ''
 pixiv_user_cookies = ''
 piviv_user_cookies_is_not_empty = False
 cust_path_enable = False
-
+print_info = False
 #
 if not os.path.exists('config.ini'):
     if input('Do you want to use socks5 proxy? (Y/N):') == 'Y':
@@ -420,6 +420,7 @@ def format_pixiv_user_profile_all_url(target_user_id):
 
 
 def get_illust_name_from_illust_url(url):
+    data_dict = {}
     retry = 0
     while True:
         try:
@@ -435,16 +436,31 @@ def get_illust_name_from_illust_url(url):
             break
     illust_url_content.raise_for_status()
     illust_url_content.encoding = 'unicode_escape'
-    img_name_re = re.compile(r'\"userIllusts\":{.*?}')
-    img_info = img_name_re.findall(illust_url_content.text)[0]
-    illust_title_re = re.compile(r'\"illustTitle\":\".*?\"')
-    illust_title = illust_title_re.findall(img_info)[0]
-    # img_info_f = "{" + img_info + "}}"
-    # final_dict = json.loads(img_info_f)
-    illust_title_f = '{' + illust_title + "}"
-    illust_title_f_dict = json.loads(illust_title_f)
-    print(illust_title_f_dict['illustTitle'])
-    return illust_title
+    # user_id
+    data_dict['user_id'] = json.loads('{' + re.compile(r'\"userId\":\".*?\"').findall(illust_url_content.text)[0] + '}')['userId']
+    # user_name
+    data_dict['user_name'] = json.loads('{' + re.compile(r'\"userName\":\".*?\"').findall(illust_url_content.text)[0] + '}')['userName']
+    # illust_id
+    data_dict['illust_id'] = json.loads('{' + re.compile(r'\"illustId\":\".*?\"').findall(illust_url_content.text)[0]  + '}')['illustId']
+    # illust_name
+    data_dict['illust_title'] = json.loads('{' + re.compile(r'\"illustTitle\":\".*?\"').findall(illust_url_content.text)[0] + '}')['illustTitle']
+    # illust_tag
+    data_dict['illust_tag'] = json.loads('{' + re.compile(r'\"tag\":\".*?\"').findall(illust_url_content.text)[0] + "}")['tag']
+    # illust_type
+    data_dict['illust_type'] = json.loads('{' + re.compile(r'\"illustType\":.').findall(illust_url_content.text)[0] + "}")['illustType']
+    # illust_liked
+    data_dict['illust_liked'] = json.loads('{' + re.compile(r'\"likeData\":.*?,').findall(illust_url_content.text)[0].split(',')[0] + "}")['likeData']
+    # illust_marked_count
+    data_dict['illust_marked_count'] = json.loads('{' + re.compile(r'\"bookmarkCount\":.*?,').findall(illust_url_content.text)[0].split(',')[0] + "}")['bookmarkCount']
+    # illust_liked_count
+    data_dict['illust_liked_count'] = json.loads('{' + re.compile(r'\"likeCount\":.*?,').findall(illust_url_content.text)[0].split(',')[0] + "}")['likeCount']
+    # illust_view_count
+    data_dict['illust_view_count'] = json.loads('{' + re.compile(r'\"viewCount\":.*?,').findall(illust_url_content.text)[0].split(',')[0] + "}")['viewCount']
+    # illust_date
+    data_dict['illust_date'] = json.loads('{' + re.compile(r'\"createDate\":\".*?\"').findall(illust_url_content.text)[0] + '}')['createDate']
+
+    print(data_dict)
+    return data_dict
 
 
 def format_multi_illust_json_url(multi_illust_id):
@@ -648,6 +664,8 @@ while (True):
                     illust_type = 'Single'
                 elif illust_type_code == '1':
                     illust_type = 'Multiple'
+                elif illust_type_code == '2':
+                    illust_type = 'Dynamic'
                 print('-----Index of:', i, "Count", item)
                 print('Title:', title)
                 print('Date:', date)
@@ -700,8 +718,8 @@ while (True):
                             if file.endswith('jpg') or file.endswith('png'):
                                 sort_by_num.append(src_saved_dir + global_symbol + file)
                     sort_by_num.sort()
-                    #print('sorted:', sort_by_num)
-                    time_start_d_s=time.time()
+                    # print('sorted:', sort_by_num)
+                    time_start_d_s = time.time()
                     print('Reading each frame..')
                     for each_frame in sort_by_num:
                         frames.append(imageio.imread(each_frame))
@@ -742,7 +760,7 @@ while (True):
             download_count += 1
             print("Downloading", str(download_count), "of", total_ids)
             download_thread(format_pixiv_illust_original_url(format_pixiv_illust_url(single_illust)),
-                            save_path, get_illust_name_from_illust_url(format_pixiv_illust_url(single_illust)),
+                            save_path, get_illust_name_from_illust_url(format_pixiv_illust_url(single_illust))['illust_title'],
                             str(target_user_id))
         print('\nALL Done')
     elif choose == '3':

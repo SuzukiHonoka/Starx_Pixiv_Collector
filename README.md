@@ -49,7 +49,7 @@ And just follow the echo words.
 #### type in then you'll have a huge detail of it.
 
 ## How can I exit?
-### Exit (5)
+### Exit (6)
 
 # How to login with your own cookies?
 ![Only for this situation](https://github.com/SuzukiHonoka/Starx_Pixiv_Collector/blob/master/How_to_1_1.png)

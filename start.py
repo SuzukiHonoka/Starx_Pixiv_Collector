@@ -579,8 +579,9 @@ while (True):
     print('Update the user cookies(4)')
     print('Parse an illust info with given illust id(5)')
     print('Search something via single key word(6)')
-    print('Exit(7)')
-    choose = input("Your choose[1-7]:")
+    print('Download the illusts frome recommender(7)')
+    print('Exit(8)')
+    choose = input("Your choose[1-8]:")
     if choose == '1':
         mode_asked = int(input('Please choose the ranking type(0-11):'))
         # 倒序取出可用日期
@@ -893,7 +894,6 @@ while (True):
             elif illust_type == 2:
                 dynamic_download_and_Synthesizing(illust_id, illust_title, 'manual')
         print('Done!')
-
     elif choose == '6':
         '''
         mode 
@@ -970,5 +970,33 @@ while (True):
             search_target_url = search_url + search_type + prefix + search_filter_1 + search_key_word + search_filter_2_0 + search_filter_2_1 + search_page
         print('Search URL:', search_target_url)
     elif choose == '7':
+        illust_download_limit = int(input('Set a limit for downloading?[1-1000]'))
+        # recommender_user_and_illust_url='https://www.pixiv.net/rpc/index.php?mode=get_recommend_users_and_works_by_user_ids&user_ids=211974,6148565,11&user_num=30&work_num=5'
+        recommender_illust_url = 'https://www.pixiv.net/rpc/recommender.php?type=illust&sample_illusts=auto&num_recommendations=1000&page=discovery&mode=all'
+        illusts_ids = json.loads(s.get(recommender_illust_url).text)['recommendations']
+        print('illust_count:',len(illusts_ids))
+        for single_id in range(0,illust_download_limit):
+            illust_infos = get_illust_infos_from_illust_url(format_pixiv_illust_url(illusts_ids[single_id]))
+            illust_type = illust_infos['illustType']
+            illust_id = illust_infos['illustId']
+            illust_title = illust_infos['illustTitle']
+            if illust_type == 0:
+                print('Starting Download!')
+                download_thread(illust_infos['urls']['original'], save_path,
+                                re.sub('[\/:*?"<>|]', '_', illust_title),
+                                'recommender' + global_symbol + year_month + str(day))
+            elif illust_type == 1:
+                print('Parsing datas...')
+                data_listed = format_pixiv_illust_original_url(format_multi_illust_json_url(illust_id), 2)
+                for each_one in data_listed:
+                    print('One of Multiple Picture source address:', each_one)
+                    print('Starting Download!')
+                    download_thread(each_one, save_path, re.sub('[\/:*?"<>|]', '_', illust_title),
+                                    'recommender' + global_symbol + year_month + str(
+                                        day) + global_symbol + 'M-' + str(illust_id))
+            elif illust_type == 2:
+                dynamic_download_and_Synthesizing(illust_id, illust_title, 'recommender')
+        #print(illusts_ids)
+    elif choose == '8':
         print('Bye!!')
         exit()

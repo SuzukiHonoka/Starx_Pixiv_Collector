@@ -45,14 +45,21 @@ And just follow the echo words.
 #### You need to know your illust id first,
 #### type in then you'll have a huge detail of it.
 
+### Search something via single key word(6)
+#### Select some value then you'll get a search url which is you wanted.
+
+### Download the illusts frome recommender(7)
+#### As the title said,
+#### When you are using this function,
+#### you can automatic download up to 1000 illust for you by AI.
+
 # What should I do when a lots of errors apperas?
 #### Don't worry,
 #### I have already made a funtion for update the cookies.
 #### Update the user cookies (4)
 
-
 ## How can I exit?
-### Exit (6)
+### Exit (8)
 
 # How to login with your own cookies?
 ![Only for this situation](https://github.com/SuzukiHonoka/Starx_Pixiv_Collector/blob/master/How_to_1_1.png)

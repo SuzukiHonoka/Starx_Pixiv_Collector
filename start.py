@@ -456,6 +456,49 @@ def format_multi_illust_json_url(multi_illust_id):
     return multi_illust_json_url
 
 
+def dynamic_download_and_Synthesizing(illust_id, title=None, prefix=None):
+    d_json_data = 'https://www.pixiv.net/ajax/illust/' + str(illust_id) + '/ugoira_meta'
+    d_json_decoded = json.loads(s.get(d_json_data).text)['body']
+    src_zip_url = d_json_decoded['originalSrc']
+    src_mime_type = d_json_decoded['mime_type']
+    src_img_delay = int(d_json_decoded['frames'][0]['delay']) / 1000
+    src_saved_path = save_path + 'TEMP' + global_symbol + str(illust_id) + global_symbol + \
+                     src_zip_url.split('/')[-1]
+    src_saved_dir = save_path + 'TEMP' + global_symbol + str(illust_id) + global_symbol
+    src_final_dir = save_path + 'Dynamic' + global_symbol
+    download_thread(src_zip_url, save_path, None, 'TEMP' + global_symbol + str(illust_id))
+    while not os.path.exists(src_saved_path + '.done'):
+        time.sleep(1)
+        print('Waiting for complete...')
+    print('Zip target downloaded:', src_saved_path)
+    with zipfile.ZipFile(src_saved_path, 'r') as zip_file:
+        zip_file.extractall(path=src_saved_dir)
+    # get each frame
+    sort_by_num = []
+    frames = []
+    for root, dirs, files in os.walk(src_saved_dir):
+        for file in files:
+            if file.endswith('jpg') or file.endswith('png'):
+                sort_by_num.append(src_saved_dir + global_symbol + file)
+    sort_by_num.sort()
+    # print('sorted:', sort_by_num)
+    print('Reading each frame..')
+    for each_frame in sort_by_num:
+        frames.append(imageio.imread(each_frame))
+    gif_save_dir = save_path + str(prefix) + global_symbol + year_month + str(
+        day) + global_symbol + 'D-' + str(illust_id) + global_symbol
+    gif_name_format = re.sub('[\/:*?"<>|]', '_', str(title)) + '-' + str(illust_id) + '.gif'
+    if not os.path.exists(gif_save_dir):
+        os.makedirs(gif_save_dir)
+    print('Synthesizing dynamic images..')
+    try:
+        imageio.mimsave(gif_save_dir + gif_name_format, frames, duration=src_img_delay)
+    except Exception as e:
+        print(gif_save_dir + gif_name_format)
+        print(e)
+        exit()
+
+
 def download_file(url, path, sign=False):
     print("\nThread ID:" + str(_thread.get_ident()))
     path_output = path
@@ -537,7 +580,7 @@ while (True):
     print('Parse an illust info with given illust id(5)')
     print('Search something via single key word(6)')
     print('Exit(7)')
-    choose = input("Your choose[1-6]:")
+    choose = input("Your choose[1-7]:")
     if choose == '1':
         mode_asked = int(input('Please choose the ranking type(0-11):'))
         # 倒序取出可用日期
@@ -685,47 +728,8 @@ while (True):
                                             day) + global_symbol + 'M-' + str(illust_id))
                 elif illust_type_code == '2':
                     print('Dynamic Download start!')
-                    d_json_data = 'https://www.pixiv.net/ajax/illust/' + str(illust_id) + '/ugoira_meta'
-                    d_json_decoded = json.loads(s.get(d_json_data).text)['body']
-                    src_zip_url = d_json_decoded['originalSrc']
-                    src_mime_type = d_json_decoded['mime_type']
-                    src_img_delay = int(d_json_decoded['frames'][0]['delay']) / 1000
-                    src_saved_path = save_path + 'TEMP' + global_symbol + str(illust_id) + global_symbol + \
-                                     src_zip_url.split('/')[-1]
-                    src_saved_dir = save_path + 'TEMP' + global_symbol + str(illust_id) + global_symbol
-                    src_final_dir = save_path + 'Dynamic' + global_symbol
-                    download_thread(src_zip_url, save_path, None, 'TEMP' + global_symbol + str(illust_id))
-                    while not os.path.exists(src_saved_path + '.done'):
-                        time.sleep(1)
-                        print('Waiting for complete...')
-                    print('Zip target downloaded:', src_saved_path)
-                    with zipfile.ZipFile(src_saved_path, 'r') as zip_file:
-                        zip_file.extractall(path=src_saved_dir)
-                    # get each frame
-                    sort_by_num = []
-                    frames = []
-                    for root, dirs, files in os.walk(src_saved_dir):
-                        for file in files:
-                            if file.endswith('jpg') or file.endswith('png'):
-                                sort_by_num.append(src_saved_dir + global_symbol + file)
-                    sort_by_num.sort()
-                    # print('sorted:', sort_by_num)
                     time_start_d_s = time.time()
-                    print('Reading each frame..')
-                    for each_frame in sort_by_num:
-                        frames.append(imageio.imread(each_frame))
-                    gif_save_dir = save_path + ranking_types[mode_asked] + global_symbol + year_month + str(
-                        day) + global_symbol + 'D-' + str(illust_id) + global_symbol
-                    gif_name_format = re.sub('[\/:*?"<>|]', '_', title) + '-' + str(illust_id) + '.gif'
-                    if not os.path.exists(gif_save_dir):
-                        os.makedirs(gif_save_dir)
-                    print('Synthesizing dynamic images..')
-                    try:
-                        imageio.mimsave(gif_save_dir + gif_name_format, frames, duration=src_img_delay)
-                    except Exception as e:
-                        print(gif_save_dir + gif_name_format)
-                        print(e)
-                        exit()
+                    dynamic_download_and_Synthesizing(illust_id, title, ranking_types[mode_asked])
                     print('Dynamic saved.')
                     print('Synthesizing cost:', time.time() - time_start_d_s)
 
@@ -868,6 +872,28 @@ while (True):
         print('---------INFO-of-' + single_illust)
         for each_info in list(dict.keys(illust_infos)):
             print(each_info + ':', str(illust_infos[each_info]))
+        if input('Do you want to download it?[Y/N]:') == 'Y':
+            illust_type = illust_infos['illustType']
+            illust_id = illust_infos['illustId']
+            illust_title = illust_infos['illustTitle']
+            if illust_type == 0:
+                print('Starting Download!')
+                download_thread(illust_infos['urls']['original'], save_path,
+                                re.sub('[\/:*?"<>|]', '_', illust_title),
+                                'manual' + global_symbol + year_month + str(day))
+            elif illust_type == 1:
+                print('Parsing datas...')
+                data_listed = format_pixiv_illust_original_url(format_multi_illust_json_url(illust_id), 2)
+                for each_one in data_listed:
+                    print('One of Multiple Picture source address:', each_one)
+                    print('Starting Download!')
+                    download_thread(each_one, save_path, re.sub('[\/:*?"<>|]', '_', illust_title),
+                                    'manual' + global_symbol + year_month + str(
+                                        day) + global_symbol + 'M-' + str(illust_id))
+            elif illust_type == 2:
+                dynamic_download_and_Synthesizing(illust_id, illust_title, 'manual')
+        print('Done!')
+
     elif choose == '6':
         '''
         mode 
@@ -942,8 +968,7 @@ while (True):
             search_target_url = search_url + search_type + prefix + search_filter_1 + search_key_word + search_filter_0 + search_page + search_mode
         elif type_int == 2:
             search_target_url = search_url + search_type + prefix + search_filter_1 + search_key_word + search_filter_2_0 + search_filter_2_1 + search_page
-        print(search_target_url)
-
+        print('Search URL:', search_target_url)
     elif choose == '7':
         print('Bye!!')
         exit()

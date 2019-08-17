@@ -23,12 +23,14 @@ And just follow the echo words.
     1. weekly
     2. monthly
     3. rookie
-    4. male
-    5. female
-    6. Daily_r18
-    7. weekly_r18
-    8. male_r18
-    9. female_r18
+    4. original
+    5. male
+    6. female
+    7. Daily_r18
+    8. weekly_r18
+    9. male_r18
+    10. female_r18
+    11. r18g
 #### 
 ### Tips: When auto testing the available day function started,the mode will use mode 0.
 ### Download the pics from a user (2)

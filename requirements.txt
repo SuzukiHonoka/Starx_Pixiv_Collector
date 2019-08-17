@@ -1,0 +1,5 @@
+requests
+configparser
+bs4
+imageio
+demjson

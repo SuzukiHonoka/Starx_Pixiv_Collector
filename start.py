@@ -535,7 +535,8 @@ while (True):
     print('Download the pics that you marked(3)')
     print('Update the user cookies(4)')
     print('Parse an illust info with given illust id(5)')
-    print('Exit(6)')
+    print('Search something via single key word(6)')
+    print('Exit(7)')
     choose = input("Your choose[1-6]:")
     if choose == '1':
         mode_asked = int(input('Please choose the ranking type(0-11):'))
@@ -868,5 +869,81 @@ while (True):
         for each_info in list(dict.keys(illust_infos)):
             print(each_info + ':', str(illust_infos[each_info]))
     elif choose == '6':
+        '''
+        mode 
+            0:all
+            1:safe
+            2:r18
+        type
+            0:search.php?s_mode=s_tag_full(illust and manga)[word]
+            1:novel/search.php?(novel)[word]
+            2:search_user.php?s_mode=s_usr(user)[nick]<no global filter>
+        filter global 0
+            0:date_d    (latest)
+            1:data      (older)
+            2:popular_d
+            3:popular_male_d
+            4:popular_female_d    
+        filter 1 (type=1)
+            0:tags.php?(tag)
+            1:search.php?s_mode=s_tag(key word)   
+            2:search.php?s_mode=s_tc(full text)
+        filter 2:0 (type=2)
+            0:&i=0(all)
+            1:&i=1(has works)
+        filter 2:1
+            0:&nick_mf=1(full match)
+            1:&nick_mf=0(parts match)           
+            
+        path_url=home_url+type_url+key+filter+[filter_sec]+page+mode        
+        '''
+        search_type_list = ['search.php?', 'novel/', 'search_user.php?s_mode=s_usr']
+        search_filter_0_list = ['date_d', 'date', 'popular_d', 'popular_male_d', 'popular_female_d']
+        search_filter_1_list = ['tags.php?', 'search.php?s_mode=s_tag', 'search.php?s_mode=s_tc']
+
+        search_mode_list = ['all', 'safe', 'r18']
+        # home_url
+        search_url = 'https://www.pixiv.net/'
+        # type_url
+        type_int = int(input('Please enter the search type[0-2]:'))
+        search_type = search_type_list[type_int]
+        # key
+        search_key_word = 'word='
+        if type_int == 2:
+            search_key_word = 'nick='
+        search_key_word += input('Please enter the single key word:')
+        # filter 0
+        search_filter_0 = ''
+        if type_int != 2:
+            search_filter_0 = '&order=' + search_filter_0_list[int(input('Please enter the global filter[0-4]:'))]
+        # filter 1 x extra check
+        search_filter_1 = ''
+        if type_int == 1:
+            search_filter_1 = search_filter_1_list[int(input('Please enter the second filter[0-2]:'))]
+        # filter 2 0
+        search_filter_2_0 = ''
+        # filyer 2 1
+        search_filter_2_1 = ''
+        if type_int == 2:
+            search_filter_2_0 = '&i=' + input('Want a artist?[0-1]')
+            search_filter_2_1 = '&nick_mf=' + input('Full match?[0-1]')
+        # page
+        search_page = '&p=' + input('Please enter the page num[1-1000]:')
+        # mode
+        search_mode = ''
+        if type_int != 2:
+            search_mode = '&mode=' + search_mode_list[int(input('Please enter the search mode[0-2]:'))]
+        # path_url
+        prefix = '&'
+        search_target_url = ''
+        if type_int == 0:
+            search_target_url = search_url + search_type + search_key_word + search_filter_0 + search_page + search_mode
+        elif type_int == 1:
+            search_target_url = search_url + search_type + prefix + search_filter_1 + search_key_word + search_filter_0 + search_page + search_mode
+        elif type_int == 2:
+            search_target_url = search_url + search_type + prefix + search_filter_1 + search_key_word + search_filter_2_0 + search_filter_2_1 + search_page
+        print(search_target_url)
+
+    elif choose == '7':
         print('Bye!!')
         exit()

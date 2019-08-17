@@ -293,33 +293,16 @@ Mode
     5:female
 """
 
-ranking_types = ['daily', 'weekly', 'monthly', 'rookie', 'male', 'female', 'daily_r18', 'weekly_r18', 'male_r18',
-                 'female_r18']
+ranking_types = ['daily', 'weekly', 'monthly', 'rookie', 'original', 'male', 'female', 'daily_r18', 'weekly_r18',
+                 'male_r18',
+                 'female_r18', 'r18g']
 
 
 def format_pixiv_ranking_url(year_month, day, page, mode=1):
     ranking_type = "daily"
     print('Received mode:', mode)
-    if mode == 0:
-        ranking_type = ranking_types[0]
-    elif mode == 1:
-        ranking_type = ranking_types[1]
-    elif mode == 2:
-        ranking_type = ranking_types[2]
-    elif mode == 3:
-        ranking_type = ranking_types[3]
-    elif mode == 4:
-        ranking_type = ranking_types[4]
-    elif mode == 5:
-        ranking_type = ranking_types[5]
-    elif mode == 6:
-        ranking_type = ranking_types[6]
-    elif mode == 7:
-        ranking_type = ranking_types[7]
-    elif mode == 8:
-        ranking_type = ranking_types[8]
-    elif mode == 9:
-        ranking_type = ranking_types[9]
+    if mode < 12:
+        ranking_type = ranking_types[mode]
     else:
         print("Unknown Mode")
         exit()
@@ -555,7 +538,7 @@ while (True):
     print('Exit(6)')
     choose = input("Your choose[1-6]:")
     if choose == '1':
-        mode_asked = int(input('Please choose the ranking type(0-9):'))
+        mode_asked = int(input('Please choose the ranking type(0-11):'))
         # 倒序取出可用日期
         if input('Do you want to choose a date?(Y/N):') == 'Y':
             choose_date = input('Please enter the date like 2019-01-01:')
@@ -773,7 +756,9 @@ while (True):
             print("Downloading", str(download_count), "of", total_ids)
             download_thread(format_pixiv_illust_original_url(format_pixiv_illust_url(single_illust)),
                             save_path,
-                            re.sub('[\/:*?"<>|]', '_', get_illust_infos_from_illust_url(format_pixiv_illust_url(single_illust))['illustTitle']),
+                            re.sub('[\/:*?"<>|]', '_',
+                                   get_illust_infos_from_illust_url(format_pixiv_illust_url(single_illust))[
+                                       'illustTitle']),
                             str(target_user_id))
         print('\nALL Done')
     elif choose == '3':

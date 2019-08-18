@@ -969,13 +969,23 @@ while (True):
         elif type_int == 2:
             search_target_url = search_url + search_type + prefix + search_filter_1 + search_key_word + search_filter_2_0 + search_filter_2_1 + search_page
         print('Search URL:', search_target_url)
+        search_single_page_data = json.loads(
+            BeautifulSoup(s.get(search_target_url).text, 'html.parser').find(name='input', attrs={
+                'id': 'js-mount-point-search-result-list'}).attrs['data-items'])
+        print('-------Search result start!-------')
+        illust_count=len(search_single_page_data)
+        for single_illust_count in range(0,illust_count):
+            print('#',single_illust_count)
+            for per_info in list(dict.keys(search_single_page_data[single_illust_count])):
+                print(per_info+':',search_single_page_data[single_illust_count][per_info])
+        print('-------End search result for page',search_page.split('=')[1] + '-------')
     elif choose == '7':
         illust_download_limit = int(input('Set a limit for downloading?[1-1000]'))
         # recommender_user_and_illust_url='https://www.pixiv.net/rpc/index.php?mode=get_recommend_users_and_works_by_user_ids&user_ids=211974,6148565,11&user_num=30&work_num=5'
         recommender_illust_url = 'https://www.pixiv.net/rpc/recommender.php?type=illust&sample_illusts=auto&num_recommendations=1000&page=discovery&mode=all'
         illusts_ids = json.loads(s.get(recommender_illust_url).text)['recommendations']
-        print('illust_count:',len(illusts_ids))
-        for single_id in range(0,illust_download_limit):
+        print('illust_count:', len(illusts_ids))
+        for single_id in range(0, illust_download_limit):
             illust_infos = get_illust_infos_from_illust_url(format_pixiv_illust_url(illusts_ids[single_id]))
             illust_type = illust_infos['illustType']
             illust_id = illust_infos['illustId']
@@ -996,7 +1006,7 @@ while (True):
                                         day) + global_symbol + 'M-' + str(illust_id))
             elif illust_type == 2:
                 dynamic_download_and_Synthesizing(illust_id, illust_title, 'recommender')
-        #print(illusts_ids)
+        # print(illusts_ids)
     elif choose == '8':
         print('Bye!!')
         exit()

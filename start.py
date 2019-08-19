@@ -13,6 +13,8 @@ import demjson
 import zipfile
 import imageio
 
+import sqlite3
+
 # from selenium import webdriver
 
 sys_platform = sys.platform
@@ -350,6 +352,34 @@ def get_pixiv_user_name():
 '''
 
 
+def update_database(illustID, illustTitle, illustType, userId, userName, tags, urls):
+    # Connect database
+    conn = sqlite3.connect('illust_data.db')
+    c = conn.cursor()
+    # Create table
+    print(len(c.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='ILLUST_DATA'").fetchall()))
+    if len(c.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='ILLUST_DATA'").fetchall()) == 0:
+        print('Creating table..')
+        c.execute('''CREATE TABLE ILLUST_DATA
+                     (ID INT PRIMARY KEY NOT NULL, TITLE TEXT NOT NULL, TYPE INT NOT NULL, USER_ID INT NOT NULL,USER_NAME TEXT NOT NULL,TAGS TEXT NOT NULL,IMG_SRC TEXT NOT NULL)''')
+        print('Done.')
+    if len(c.execute("SELECT ID FROM ILLUST_DATA WHERE ID = ?", (str(illustID),)).fetchall()) == 0:
+        print('Ready to insert datas..')
+        # Insert a row of data
+        sql = "INSERT INTO ILLUST_DATA(ID,TITLE,TYPE,USER_ID,USER_NAME,TAGS,IMG_SRC)VALUES(?,?,?,?,?,?,?)"
+        c.execute(sql, (str(illustID), str(illustTitle), str(illustType),
+                        str(userId), str(userName), str(tags), str(urls)))
+        print('Insert done.')
+        # Save (commit) the changes
+    else:
+        print('ID exist:', str(illustID))
+    # We can also close the connection if we are done with it.
+    # Just be sure any changes have been committed or they will be lost.
+    print('Committed.')
+    conn.commit()
+    conn.close()
+
+
 def format_pixiv_illust_original_url(id_url, mode=1):
     if mode == 1:
         retry = 0
@@ -447,7 +477,9 @@ def get_illust_infos_from_illust_url(url):
     for tag in range(len(per_tags)):
         tags_list.append(per_tags[tag]['tag'])
     data_dict['tags'] = tags_list
-    # print(data_dict)
+    # # print(data_dict)
+    ###########################################################
+    # update_database(data_dict['illustId'],data_dict['illustTitle'],data_dict['illustType'],data_dict['userId'],data_dict['userName'],data_dict['tags'],data_dict['urls'])
     return data_dict
 
 
@@ -528,7 +560,6 @@ def download_file(url, path, sign=False):
                         with open(path_output + '.done', 'w+') as f:
                             f.write('Done!')
                             print('Created a sign for main thread.')
-
 
 
         except Exception as e:
@@ -716,6 +747,7 @@ while (True):
                     print('Single Download start!!')
                     # pic_url = format_pixiv_illust_original_url(format_pixiv_illust_url(illust_id))
                     pic_url = get_illust_infos_from_illust_url(format_pixiv_illust_url(illust_id))['urls']['original']
+
                     print('Picture source address:', pic_url)
                     download_thread(pic_url, save_path, re.sub('[\/:*?"<>|]', '_', title),
                                     ranking_types[mode_asked] + global_symbol + year_month + str(day))
@@ -870,7 +902,7 @@ while (True):
     elif choose == '5':
         single_illust = input('Please enter the single illust id(like 76073572):')
         illust_infos = get_illust_infos_from_illust_url(format_pixiv_illust_url(single_illust))
-        print('---------INFO-of-' + single_illust)
+        print('---------INFO-of-ID:' + single_illust + '---------')
         for each_info in list(dict.keys(illust_infos)):
             print(each_info + ':', str(illust_infos[each_info]))
         if input('Do you want to download it?[Y/N]:') == 'Y':
@@ -962,23 +994,55 @@ while (True):
         # path_url
         prefix = '&'
         search_target_url = ''
-        if type_int == 0:
-            search_target_url = search_url + search_type + search_key_word + search_filter_0 + search_page + search_mode
-        elif type_int == 1:
-            search_target_url = search_url + search_type + prefix + search_filter_1 + search_key_word + search_filter_0 + search_page + search_mode
-        elif type_int == 2:
-            search_target_url = search_url + search_type + prefix + search_filter_1 + search_key_word + search_filter_2_0 + search_filter_2_1 + search_page
-        print('Search URL:', search_target_url)
-        search_single_page_data = json.loads(
-            BeautifulSoup(s.get(search_target_url).text, 'html.parser').find(name='input', attrs={
-                'id': 'js-mount-point-search-result-list'}).attrs['data-items'])
-        print('-------Search result start!-------')
-        illust_count=len(search_single_page_data)
-        for single_illust_count in range(0,illust_count):
-            print('#',single_illust_count)
-            for per_info in list(dict.keys(search_single_page_data[single_illust_count])):
-                print(per_info+':',search_single_page_data[single_illust_count][per_info])
-        print('-------End search result for page',search_page.split('=')[1] + '-------')
+        while True:
+            if type_int == 0:
+                search_target_url = search_url + search_type + search_key_word + search_filter_0 + search_page + search_mode
+                print('Search URL:', search_target_url)
+                search_single_page_data = json.loads(
+                    BeautifulSoup(s.get(search_target_url).text, 'html.parser').find(name='input', attrs={
+                        'id': 'js-mount-point-search-result-list'}).attrs['data-items'])
+                print('-------Search result start!-------')
+                illust_count = len(search_single_page_data)
+                for single_illust_count in range(0, illust_count):
+                    print('#', single_illust_count)
+                    for per_info in list(dict.keys(search_single_page_data[single_illust_count])):
+                        print(per_info + ':', search_single_page_data[single_illust_count][per_info])
+                print('-------End search result for page', search_page.split('=')[1] + '-------')
+                if input('Do you want to download one?(Y/N):') == 'Y':
+                    download_target = int(input('Which one you want to download?[0-' + str(illust_count - 1) + ']:'))
+                    illust_id = search_single_page_data[download_target]['illustId']
+                    illust_infos = get_illust_infos_from_illust_url(format_pixiv_illust_url(illust_id))
+                    illust_type = illust_infos['illustType']
+                    illust_title = illust_infos['illustTitle']
+                    if illust_type == 0:
+                        print('Starting Download!')
+                        download_thread(illust_infos['urls']['original'], save_path,
+                                        re.sub('[\/:*?"<>|]', '_', illust_title),
+                                        'search' + global_symbol + year_month + str(day))
+                    elif illust_type == 1:
+                        print('Parsing datas...')
+                        data_listed = format_pixiv_illust_original_url(format_multi_illust_json_url(illust_id), 2)
+                        for each_one in data_listed:
+                            print('One of Multiple Picture source address:', each_one)
+                            print('Starting Download!')
+                            download_thread(each_one, save_path, re.sub('[\/:*?"<>|]', '_', illust_title),
+                                            'search' + global_symbol + year_month + str(
+                                                day) + global_symbol + 'M-' + str(illust_id))
+                    elif illust_type == 2:
+                        dynamic_download_and_Synthesizing(illust_id, illust_title, 'search')
+                    print('Select done.')
+                if input('Do you want to switch to next page?(Y/N):') == 'Y':
+                    search_page = search_page.split('=')[0] + '=' + str(int(search_page.split('=')[1]) + 1)
+                else:
+                    break
+            elif type_int == 1:
+                search_target_url = search_url + search_type + prefix + search_filter_1 + search_key_word + search_filter_0 + search_page + search_mode
+            elif type_int == 2:
+                search_target_url = search_url + search_type + prefix + search_filter_1 + search_key_word + search_filter_2_0 + search_filter_2_1 + search_page
+
+
+
+
     elif choose == '7':
         illust_download_limit = int(input('Set a limit for downloading?[1-1000]'))
         # recommender_user_and_illust_url='https://www.pixiv.net/rpc/index.php?mode=get_recommend_users_and_works_by_user_ids&user_ids=211974,6148565,11&user_num=30&work_num=5'

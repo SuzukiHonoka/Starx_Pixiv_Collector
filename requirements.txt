@@ -1,4 +1,4 @@
-requests
+requests[socks]
 configparser
 bs4
 imageio

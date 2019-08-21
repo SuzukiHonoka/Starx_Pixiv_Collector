@@ -479,7 +479,7 @@ def get_illust_infos_from_illust_url(url):
     data_dict['tags'] = tags_list
     # # print(data_dict)
     ###########################################################
-    # update_database(data_dict['illustId'],data_dict['illustTitle'],data_dict['illustType'],data_dict['userId'],data_dict['userName'],data_dict['tags'],data_dict['urls'])
+    update_database(data_dict['illustId'],data_dict['illustTitle'],data_dict['illustType'],data_dict['userId'],data_dict['userName'],data_dict['tags'],data_dict['urls'])
     return data_dict
 
 
@@ -610,7 +610,7 @@ while (True):
     print('Update the user cookies(4)')
     print('Parse an illust info with given illust id(5)')
     print('Search something via single key word(6)')
-    print('Download the illusts frome recommender(7)')
+    print('Download the illusts from recommender(7)')
     print('Exit(8)')
     choose = input("Your choose[1-8]:")
     if choose == '1':

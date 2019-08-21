@@ -48,7 +48,7 @@ And just follow the echo words.
 ### Search something via single key word(6)
 #### Select some value then you'll get a search url which is you wanted.
 
-### Download the illusts frome recommender(7)
+### Download the illusts from recommender(7)
 #### As the title said,
 #### When you are using this function,
 #### you can automatic download up to 1000 illust for you by AI.

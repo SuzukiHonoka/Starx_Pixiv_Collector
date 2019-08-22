@@ -39,7 +39,7 @@ global_symbol = '/'
 program_path = os.path.abspath('.') + global_symbol
 
 save_path = os.path.abspath('.') + global_symbol + "Pixiv_Download" + global_symbol
-
+###################
 proxy_enable = False
 proxy_host = ''
 proxy_port = ''
@@ -49,7 +49,9 @@ pixiv_user_cookies = ''
 piviv_user_cookies_is_not_empty = False
 cust_path_enable = False
 print_info = False
-#
+bookmarked_filter = 0
+###################
+
 if not os.path.exists('config.ini'):
     if input('Do you want to use socks5 proxy? (Y/N):') == 'Y':
         proxy_enable = True
@@ -63,6 +65,10 @@ if not os.path.exists('config.ini'):
     if input('Do you want to change default save path? (Y/N):') == 'Y':
         cust_path_enable = True
         save_path = input("Please enter the full path to save the data:") + global_symbol
+    if input('Do you want to display the illust info when downloading?(Y/N):') == 'Y':
+        print_info = True
+    if input('Do you want to filter the ranking illust when downloading?(Y/N):') == 'Y':
+        bookmarked_filter = int(input('Please enter the bookmarked value to filter:'))
     if input('Are you sure about that account information correct? (Y/N):') == 'Y':
         # OPTIONAL
         if input('Do you want to save this configuration as a file? (Y/N):') == 'Y':
@@ -81,8 +87,10 @@ if not os.path.exists('config.ini'):
             config.set('Account', 'User_name', pixiv_user_name)
             config.set('Account', 'User_pass', pixiv_user_pass)
             config.add_section('Data')
-            config.set('Data', 'CUST_PATH_ENABLE', cust_path_enable)
+            config.set('Data', 'CUST_PATH_ENABLE', str(cust_path_enable))
             config.set('Data', 'SAVE_PATH', save_path)
+            config.set('Data','PRINT_INFO',str(print_info))
+            config.set('Data', 'BOOKMARKED_FILTER', str(bookmarked_filter))
             with open(abs_path, 'w+') as f:
                 config.write(f)
         print('Done!')
@@ -98,7 +106,9 @@ else:
     if config['Data']['CUST_PATH_ENABLE'] == 'True':
         cust_path_enable = True
         save_path = config['Data']['SAVE_PATH']
-
+    if config['Data']['PRINT_INFO'] == 'True':
+        print_info = True
+    bookmarked_filter = config['Data']['BOOKMARKED_FILTER']
 if os.path.exists("cookies"):
     with open('cookies', 'r') as f:
         cookies = f.read()
@@ -357,7 +367,6 @@ def update_database(illustID, illustTitle, illustType, userId, userName, tags, u
     conn = sqlite3.connect('illust_data.db')
     c = conn.cursor()
     # Create table
-    print(len(c.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='ILLUST_DATA'").fetchall()))
     if len(c.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='ILLUST_DATA'").fetchall()) == 0:
         print('Creating table..')
         c.execute('''CREATE TABLE ILLUST_DATA
@@ -371,12 +380,12 @@ def update_database(illustID, illustTitle, illustType, userId, userName, tags, u
                         str(userId), str(userName), str(tags), str(urls)))
         print('Insert done.')
         # Save (commit) the changes
+        conn.commit()
+        print('Committed.')
     else:
         print('ID exist:', str(illustID))
     # We can also close the connection if we are done with it.
     # Just be sure any changes have been committed or they will be lost.
-    print('Committed.')
-    conn.commit()
     conn.close()
 
 
@@ -743,6 +752,9 @@ while (True):
                 print('View_count:', view_count)
                 print('Type:', illust_type)
 
+                if bookmarked_filter > 0:
+                    if int(get_illust_infos_from_illust_url(format_pixiv_illust_url(illust_id))['bookmarkCount']) < bookmarked_filter:
+                        continue
                 if illust_type_code == '0':
                     print('Single Download start!!')
                     # pic_url = format_pixiv_illust_original_url(format_pixiv_illust_url(illust_id))
@@ -1044,7 +1056,7 @@ while (True):
 
 
     elif choose == '7':
-        illust_download_limit = int(input('Set a limit for downloading?[1-1000]'))
+        illust_download_limit = int(input('Set a limit for downloading?[1-1000]:'))
         # recommender_user_and_illust_url='https://www.pixiv.net/rpc/index.php?mode=get_recommend_users_and_works_by_user_ids&user_ids=211974,6148565,11&user_num=30&work_num=5'
         recommender_illust_url = 'https://www.pixiv.net/rpc/recommender.php?type=illust&sample_illusts=auto&num_recommendations=1000&page=discovery&mode=all'
         illusts_ids = json.loads(s.get(recommender_illust_url).text)['recommendations']

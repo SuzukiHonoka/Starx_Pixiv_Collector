@@ -751,14 +751,14 @@ while (True):
                 print('Rating_count:', rating_count)
                 print('View_count:', view_count)
                 print('Type:', illust_type)
-
+                info = get_illust_infos_from_illust_url(format_pixiv_illust_url(illust_id))
                 if bookmarked_filter > 0:
-                    if int(get_illust_infos_from_illust_url(format_pixiv_illust_url(illust_id))['bookmarkCount']) < bookmarked_filter:
+                    if int(info['bookmarkCount']) < bookmarked_filter:
                         continue
                 if illust_type_code == '0':
                     print('Single Download start!!')
                     # pic_url = format_pixiv_illust_original_url(format_pixiv_illust_url(illust_id))
-                    pic_url = get_illust_infos_from_illust_url(format_pixiv_illust_url(illust_id))['urls']['original']
+                    pic_url = info['urls']['original']
 
                     print('Picture source address:', pic_url)
                     download_thread(pic_url, save_path, re.sub('[\/:*?"<>|]', '_', title),

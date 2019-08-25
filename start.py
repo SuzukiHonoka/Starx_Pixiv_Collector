@@ -51,6 +51,17 @@ cust_path_enable = False
 print_info = False
 bookmarked_filter = 0
 ###################
+download_manga_enable = True
+download_gif_enable = True
+###################
+current_threads = 0
+subthreads_limit = 16
+'''
+For CN users only , PLEASE DON'T USE IT IF YOU ALREADY HAVE PROXY SERVER!
+'''
+d_dtrp_enable = False
+d_dtrp_address = 'pximg.starx.workers.dev'
+###################
 
 if not os.path.exists('config.ini'):
     if input('Do you want to use socks5 proxy? (Y/N):') == 'Y':
@@ -89,7 +100,7 @@ if not os.path.exists('config.ini'):
             config.add_section('Data')
             config.set('Data', 'CUST_PATH_ENABLE', str(cust_path_enable))
             config.set('Data', 'SAVE_PATH', save_path)
-            config.set('Data','PRINT_INFO',str(print_info))
+            config.set('Data', 'PRINT_INFO', str(print_info))
             config.set('Data', 'BOOKMARKED_FILTER', str(bookmarked_filter))
             with open(abs_path, 'w+') as f:
                 config.write(f)
@@ -373,7 +384,7 @@ def update_database(illustID, illustTitle, illustType, userId, userName, tags, u
                      (ID INT PRIMARY KEY NOT NULL, TITLE TEXT NOT NULL, TYPE INT NOT NULL, USER_ID INT NOT NULL,USER_NAME TEXT NOT NULL,TAGS TEXT NOT NULL,IMG_SRC TEXT NOT NULL)''')
         print('Done.')
     if len(c.execute("SELECT ID FROM ILLUST_DATA WHERE ID = ?", (str(illustID),)).fetchall()) == 0:
-        print('Ready to insert datas..')
+        print('Ready to insert data for ID:', str(illustID))
         # Insert a row of data
         sql = "INSERT INTO ILLUST_DATA(ID,TITLE,TYPE,USER_ID,USER_NAME,TAGS,IMG_SRC)VALUES(?,?,?,?,?,?,?)"
         c.execute(sql, (str(illustID), str(illustTitle), str(illustType),
@@ -488,7 +499,8 @@ def get_illust_infos_from_illust_url(url):
     data_dict['tags'] = tags_list
     # # print(data_dict)
     ###########################################################
-    update_database(data_dict['illustId'],data_dict['illustTitle'],data_dict['illustType'],data_dict['userId'],data_dict['userName'],data_dict['tags'],data_dict['urls'])
+    update_database(data_dict['illustId'], data_dict['illustTitle'], data_dict['illustType'], data_dict['userId'],
+                    data_dict['userName'], data_dict['tags'], data_dict['urls'])
     return data_dict
 
 
@@ -541,19 +553,28 @@ def dynamic_download_and_Synthesizing(illust_id, title=None, prefix=None):
 
 
 def download_file(url, path, sign=False):
+    download_proxy = s.proxies
+
+    global current_threads
+    current_threads += 1
+    if d_dtrp_enable:
+        url = url.replace('i.pximg.net', d_dtrp_address)
+        download_proxy = None
+
     print("\nThread ID:" + str(_thread.get_ident()))
     path_output = path
     retry = 0
     while True:
         try:
             if retry > 3:
-                print('Max retried reached')
+                print('\nMax retried reached')
                 exit()
             retry += 1
-            with s.get(url, stream=True) as pic:
+            with s.get(url, stream=True, proxies=download_proxy) as pic:
                 pic.raise_for_status()
                 if os.path.exists(path_output):
-                    print("File exists:" + path_output, "\nSkip!")
+                    current_threads -= 1
+                    print("\nFile exists:" + path_output, "\nSkip!")
                     return False
                 try:
                     with open(path_output, 'wb') as f:
@@ -561,33 +582,33 @@ def download_file(url, path, sign=False):
                             if chunk:
                                 f.write(chunk)
                 except Exception as e:
-                    print('An error occurred when saving files.')
+                    print('\nAn error occurred when saving files.')
                     print(e)
                 else:
-                    print("File Saved:" + path_output)
+                    print("\nFile Saved:" + path_output)
                     if sign:
                         with open(path_output + '.done', 'w+') as f:
-                            f.write('Done!')
-                            print('Created a sign for main thread.')
-
-
+                            f.write('\nDone!')
+                            print('\nCreated a sign for main thread.')
         except Exception as e:
-            print('An error occurred when Downloading files.')
+            print('\nAn error occurred when Downloading files.')
             print(e)
         else:
+            current_threads -= 1
             return True
 
 
 def download_thread(url, path, exfile_name=None, exfile_dir=None):
+    wait_for_limit()
     local_path = path
     give_it_a_sign = False
     local_filename = url.split('/')[-1]
     if local_filename.endswith('zip'):
         give_it_a_sign = True
     if exfile_dir is not None:
-        local_path += global_symbol + exfile_dir + global_symbol
+        local_path += exfile_dir + global_symbol
     if exfile_name is not None:
-        local_filename = global_symbol + exfile_name + "-" + local_filename
+        local_filename = exfile_name + "-" + local_filename
     path_output = local_path + local_filename
     print("File Location:" + path_output)
     if not os.path.exists(local_path):
@@ -607,10 +628,18 @@ def download_thread(url, path, exfile_name=None, exfile_dir=None):
             print("Starting retry..")
             retry_count += 1
     else:
-        print("Download thread successfully started!")
+        print("\nDownload thread successfully started!")
+    print('Threads_count:', str(current_threads))
+
+
+def wait_for_limit():
+    while current_threads >= subthreads_limit:
+        print('Max Threads Reached,Waiting for release..')
+        time.sleep(1)
 
 
 while (True):
+    current_threads = 0
     get_pixiv_user_name()
     print('What do you want to do?')
     print("Download the selected ranking pics(1)")
@@ -751,19 +780,24 @@ while (True):
                 print('Rating_count:', rating_count)
                 print('View_count:', view_count)
                 print('Type:', illust_type)
-                info = get_illust_infos_from_illust_url(format_pixiv_illust_url(illust_id))
-                if bookmarked_filter > 0:
-                    if int(info['bookmarkCount']) < bookmarked_filter:
+
+                info_data = get_illust_infos_from_illust_url(format_pixiv_illust_url(illust_id))
+                if int(bookmarked_filter) > 0:
+                    current_marked = int(info_data['bookmarkCount'])
+                    if current_marked < int(bookmarked_filter):
+                        print(illust_id, 'current_marked:', current_marked, 'pass!!')
                         continue
                 if illust_type_code == '0':
                     print('Single Download start!!')
                     # pic_url = format_pixiv_illust_original_url(format_pixiv_illust_url(illust_id))
-                    pic_url = info['urls']['original']
+                    pic_url = info_data['urls']['original']
 
                     print('Picture source address:', pic_url)
                     download_thread(pic_url, save_path, re.sub('[\/:*?"<>|]', '_', title),
                                     ranking_types[mode_asked] + global_symbol + year_month + str(day))
                 elif illust_type_code == '1':
+                    if not download_manga_enable:
+                        continue
                     print('Multiple Download start!!')
                     data_listed = format_pixiv_illust_original_url(format_multi_illust_json_url(illust_id), 2)
                     for each_one in data_listed:
@@ -772,6 +806,8 @@ while (True):
                                         ranking_types[mode_asked] + global_symbol + year_month + str(
                                             day) + global_symbol + 'M-' + str(illust_id))
                 elif illust_type_code == '2':
+                    if not download_gif_enable:
+                        continue
                     print('Dynamic Download start!')
                     time_start_d_s = time.time()
                     dynamic_download_and_Synthesizing(illust_id, title, ranking_types[mode_asked])

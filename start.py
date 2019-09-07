@@ -63,8 +63,11 @@ d_dtrp_enable = False
 d_dtrp_address = 'pximg.starx.workers.dev'
 ###################
 
+def input_yn(str):
+    return input(str + ' (Y/n):').lower() == 'y'
+
 if not os.path.exists('config.ini'):
-    if input('Do you want to use socks5 proxy? (Y/N):') == 'Y':
+    if input_yn('Do you want to use socks5 proxy?'):
         proxy_enable = True
         proxy_host = input('Please enter the socks5 server host ip address:')
         proxy_port = input('Please enter the socks5 server host port number:')
@@ -73,16 +76,16 @@ if not os.path.exists('config.ini'):
         proxy_enable = False
     pixiv_user_name = input("Please enter your own pixiv account name:")
     pixiv_user_pass = input("Please enter your own pixiv account password:")
-    if input('Do you want to change default save path? (Y/N):') == 'Y':
+    if input_yn('Do you want to change default save path?'):
         cust_path_enable = True
         save_path = input("Please enter the full path to save the data:") + global_symbol
-    if input('Do you want to display the illust info when downloading?(Y/N):') == 'Y':
+    if input_yn('Do you want to display the illust info when downloading?'):
         print_info = True
-    if input('Do you want to filter the ranking illust when downloading?(Y/N):') == 'Y':
+    if input_yn('Do you want to filter the ranking illust when downloading?'):
         bookmarked_filter = int(input('Please enter the bookmarked value to filter:'))
-    if input('Are you sure about that account information correct? (Y/N):') == 'Y':
+    if input_yn('Are you sure about that account information correct?'):
         # OPTIONAL
-        if input('Do you want to save this configuration as a file? (Y/N):') == 'Y':
+        if input_yn('Do you want to save this configuration as a file?'):
             path = program_path
             config_name = "config.ini"
             abs_path = path + config_name
@@ -196,7 +199,7 @@ def update_user_cookies():
     else:
         print("Login Error!")
         global piviv_user_cookies_is_not_empty
-        if input('Do you want to try to login with your own cookies?(Y/N):') == 'Y':
+        if input_yn('Do you want to try to login with your own cookies?'):
             print('How did you get the cookies?')
             where_did_you_get = input(
                 'From the Chrome Desktop Console/From the Firefox\'s Cookies Quick Manager[Type 1 or 2]:')
@@ -217,7 +220,7 @@ def update_user_cookies():
                 s.cookies = requests.utils.cookiejar_from_dict(cookies_dict)
                 piviv_user_cookies_is_not_empty = True
             elif where_did_you_get == '2':
-                if input('Did you saved the json file to ' + program_path + ' ?(Y/N):') == 'Y':
+                if input_yn('Did you saved the json file to ' + program_path + ' ?'):
                     cookies_file = open(program_path + 'cookies.json', 'r')
                     cookies = json.loads(cookies_file.read())
                     cookies_file.close()
@@ -654,7 +657,7 @@ while (True):
     if choose == '1':
         mode_asked = int(input('Please choose the ranking type(0-11):'))
         # 倒序取出可用日期
-        if input('Do you want to choose a date?(Y/N):') == 'Y':
+        if input_yn('Do you want to choose a date?'):
             choose_date = input('Please enter the date like 2019-01-01:')
             date_dict = choose_date.split('-')
             year_month = date_dict[0] + date_dict[1]
@@ -953,7 +956,7 @@ while (True):
         print('---------INFO-of-ID:' + single_illust + '---------')
         for each_info in list(dict.keys(illust_infos)):
             print(each_info + ':', str(illust_infos[each_info]))
-        if input('Do you want to download it?[Y/N]:') == 'Y':
+        if input_yn('Do you want to download it?'):
             illust_type = illust_infos['illustType']
             illust_id = illust_infos['illustId']
             illust_title = illust_infos['illustTitle']
@@ -1056,7 +1059,7 @@ while (True):
                     for per_info in list(dict.keys(search_single_page_data[single_illust_count])):
                         print(per_info + ':', search_single_page_data[single_illust_count][per_info])
                 print('-------End search result for page', search_page.split('=')[1] + '-------')
-                if input('Do you want to download one?(Y/N):') == 'Y':
+                if input_yn('Do you want to download one?'):
                     download_target = int(input('Which one you want to download?[0-' + str(illust_count - 1) + ']:'))
                     illust_id = search_single_page_data[download_target]['illustId']
                     illust_infos = get_illust_infos_from_illust_url(format_pixiv_illust_url(illust_id))
@@ -1079,7 +1082,7 @@ while (True):
                     elif illust_type == 2:
                         dynamic_download_and_Synthesizing(illust_id, illust_title, 'search')
                     print('Select done.')
-                if input('Do you want to switch to next page?(Y/N):') == 'Y':
+                if input_yn('Do you want to switch to next page?'):
                     search_page = search_page.split('=')[0] + '=' + str(int(search_page.split('=')[1]) + 1)
                 else:
                     break

@@ -6,8 +6,11 @@ import os
 import re
 import sys
 import time
+import socket
 
 import requests
+# SNI Bypass prepare
+from requests_toolbelt.adapters import host_header_ssl
 from bs4 import BeautifulSoup
 import demjson
 import zipfile
@@ -40,6 +43,10 @@ program_path = os.path.abspath('.') + global_symbol
 
 save_path = os.path.abspath('.') + global_symbol + "Pixiv_Download" + global_symbol
 ###################
+sni_bypass = False
+server_ip = ''
+dl_server_ip = ''
+###################
 proxy_enable = False
 proxy_host = ''
 proxy_port = ''
@@ -61,10 +68,13 @@ For CN users only , PLEASE DON'T USE IT IF YOU ALREADY HAVE PROXY SERVER!
 '''
 d_dtrp_enable = False
 d_dtrp_address = 'pximg.starx.workers.dev'
+
+
 ###################
 
 def input_yn(str):
     return input(str + ' (Y/n):').lower() == 'y'
+
 
 if not os.path.exists('config.ini'):
     if input_yn('Do you want to use socks5 proxy?'):
@@ -74,6 +84,9 @@ if not os.path.exists('config.ini'):
     else:
         print('Not using the proxy..')
         proxy_enable = False
+        if input_yn('Did you want to use SNI Bypass mode?'):
+            sni_bypass = True
+
     pixiv_user_name = input("Please enter your own pixiv account name:")
     pixiv_user_pass = input("Please enter your own pixiv account password:")
     if input_yn('Do you want to change default save path?'):
@@ -93,6 +106,10 @@ if not os.path.exists('config.ini'):
                 with open(abs_path, 'w'):
                     print('Creating empty config file')
             config = configparser.RawConfigParser()
+            ###########
+            config.add_section('Connection')
+            config.set('Connection', 'sni_bypass_enable', str(sni_bypass))
+            ###########
             config.add_section('Proxy')
             config.set('Proxy', 'Enable', str(proxy_enable))
             config.set('Proxy', 'IP', proxy_host)
@@ -111,6 +128,8 @@ if not os.path.exists('config.ini'):
 else:
     config = configparser.ConfigParser()
     config.read('config.ini')
+    if config['Connection']['sni_bypass_enable'] == 'True':
+        sni_bypass = True
     if config['Proxy']['Enable'] == 'True':
         proxy_enable = True
     proxy_host = config['Proxy']['IP']
@@ -163,28 +182,64 @@ login_url = 'https://accounts.pixiv.net/login'
 post_url = 'https://accounts.pixiv.net/api/login?lang=en'
 
 s = requests.Session()
+s.headers = params
 
+if proxy_enable:
+    print('Gonna connect to your socks5 server...')
+    try:
+        # socks.set_default_proxy(socks.SOCKS5, proxy_host, int(proxy_port))
+        # socket.socket = socks.socksocket
+        # socket.timeout = 500
+        proxies = {
+            "http": "socks5://" + proxy_host + ":" + proxy_port,
+            'https': "socks5://" + proxy_host + ":" + proxy_port
+        }
+        s.proxies = proxies
+        # print(proxies)
+    except Exception as e:
+        print('When processing the socks5 server an error occurred.')
+        print(e)
+        exit()
+    else:
+        print('Proxy connection seems successfully created!!')
+else:
+    print('Not using the proxy..')
+    if sni_bypass:
+        print('Experiment Function: SNI Bypass starting..')
+        server_ip = socket.gethostbyname('www.pixiv.net')
+        print('Server IP =>', server_ip)
+        dl_server_ip = socket.gethostbyname('i.pximg.net')
+        print('DL Server IP =>', dl_server_ip)
+        print('Setting up SSLadapter..')
+        s.mount('https://', host_header_ssl.HostHeaderSSLAdapter())
+        print('SNI Bypass done.')
 
-def update_user_cookies():
-    s.cookies.clear()
-    # 获取登录页面
-    retry = 0
+def get_text_from_url(url):
+    retry=0
+    t_url = url
+    if sni_bypass:
+        t_url = t_url.replace('www.pixiv.net', server_ip)
+        s.headers['Host'] = url.split('//')[1].split('/')[0]
     while True:
         try:
             if retry > 3:
                 print('Max retried reached')
                 exit()
             retry += 1
-            res = s.get(login_url, params=params, timeout=10)
+            return s.get(t_url,timeout=10).text
         except Exception as e:
-            print('An error occurred When getting the login post key.')
+            print('Error Request URL:',url)
             print('Retry count:', retry)
-        else:
-            break
+            print('Error INFO:',e)
+
+def update_user_cookies():
+    s.cookies.clear()
+    # 获取登录页面
+    res = get_text_from_url(login_url)
     res.raise_for_status()
 
     pattern = re.compile(r'name="post_key" value="(.*?)">')
-    r = pattern.findall(res.text)
+    r = pattern.findall(res)
 
     datas['post_key'] = r[0]
     print('Post_Key:', datas['post_key'])
@@ -265,32 +320,12 @@ def update_user_cookies():
             # piviv_user_cookies_is_not_empty = True
 
 
-if proxy_enable:
-    print('Gonna connect to your socks5 server...')
-    try:
-        # socks.set_default_proxy(socks.SOCKS5, proxy_host, int(proxy_port))
-        # socket.socket = socks.socksocket
-        # socket.timeout = 500
-        proxies = {
-            "http": "socks5://" + proxy_host + ":" + proxy_port,
-            'https': "socks5://" + proxy_host + ":" + proxy_port
-        }
-        s.proxies = proxies
-        # print(proxies)
-    except Exception as e:
-        print('When processing the socks5 server an error occurred.')
-        print(e)
-        exit()
-    else:
-        print('Proxy connection seems successfully created!!')
-else:
-    print('Not using the proxy..')
-s.headers = params
 if not piviv_user_cookies_is_not_empty:
     update_user_cookies()
 else:
     pixiv_user_cookies_dict = dict(pixiv_user_cookies)
     s.cookies = requests.utils.cookiejar_from_dict(pixiv_user_cookies_dict)
+
 
 # print(s.cookies)
 
@@ -356,7 +391,7 @@ def get_pixiv_user_name():
                 print('Max retried reached')
                 exit()
             retry += 1
-            check_soup = BeautifulSoup(s.get(pixiv_www_url).text, 'html.parser')
+            check_soup = BeautifulSoup(get_text_from_url(pixiv_www_url), 'html.parser')
             pixiv_user_nick_name = check_soup.find(name='a',
                                                    attrs={'class': 'user-name js-click-trackable-later'}).string
             print('Login as', pixiv_user_nick_name)
@@ -405,19 +440,7 @@ def update_database(illustID, illustTitle, illustType, userId, userName, tags, u
 
 def format_pixiv_illust_original_url(id_url, mode=1):
     if mode == 1:
-        retry = 0
-        while True:
-            try:
-                if retry > 3:
-                    print('Max retried reached')
-                    exit()
-                retry += 1
-                contents = s.get(id_url, params=params)
-            except Exception as e:
-                print('An error occurred when getting the original json file.')
-                print(e)
-            else:
-                break
+        contents = get_text_from_url(id_url)
         contents.raise_for_status()
         try:
             img_src_re = re.compile(r'\"urls\":{.*?}')
@@ -429,19 +452,7 @@ def format_pixiv_illust_original_url(id_url, mode=1):
             print(e)
     elif mode == 2:
         data_list = []
-        retry = 0
-        while True:
-            try:
-                if retry > 3:
-                    print('Max retried reached')
-                    exit()
-                retry += 1
-                json_datas = s.get(id_url, params=params)
-            except Exception as e:
-                print('An error occurred when getting the original json file.')
-                print(e)
-            else:
-                break
+        json_datas = get_text_from_url(id_url)
         json_datas.raise_for_status()
         json_datas_format = json.loads(json_datas.text)['body']
         for urls in json_datas_format:
@@ -464,15 +475,14 @@ def get_illust_infos_from_illust_url(url):
                 print('Max retried reached')
                 exit()
             retry += 1
-            illust_url_content = s.get(url, timeout=10)
+            illust_url_content = get_text_from_url(url)
         except Exception as e:
             print('An error occurred when getting the illust index.')
             print(e)
         else:
             break
-    illust_url_content.raise_for_status()
     # illust_url_content.encoding = 'unicode_escape'
-    json_data = re.compile(r'\)\({[\d\D]*,}\);').findall(illust_url_content.text)[0][2:-2]
+    json_data = re.compile(r'\)\({[\d\D]*,}\);').findall(illust_url_content)[0][2:-2]
     format_json_data = demjson.decode(json_data)
     illust_info = format_json_data['preload']['illust'][list(dict.keys(format_json_data['preload']['illust']))[0]]
     # get each value
@@ -514,7 +524,7 @@ def format_multi_illust_json_url(multi_illust_id):
 
 def dynamic_download_and_Synthesizing(illust_id, title=None, prefix=None):
     d_json_data = 'https://www.pixiv.net/ajax/illust/' + str(illust_id) + '/ugoira_meta'
-    d_json_decoded = json.loads(s.get(d_json_data).text)['body']
+    d_json_decoded = json.loads(get_text_from_url(d_json_data)['body'])
     src_zip_url = d_json_decoded['originalSrc']
     src_mime_type = d_json_decoded['mime_type']
     src_img_delay = int(d_json_decoded['frames'][0]['delay']) / 1000
@@ -556,6 +566,7 @@ def dynamic_download_and_Synthesizing(illust_id, title=None, prefix=None):
 
 
 def download_file(url, path, sign=False):
+    print('Download URL:',url)
     download_proxy = s.proxies
 
     global current_threads
@@ -573,7 +584,7 @@ def download_file(url, path, sign=False):
                 print('\nMax retried reached')
                 exit()
             retry += 1
-            with s.get(url, stream=True, proxies=download_proxy) as pic:
+            with requests.get(url, stream=True, proxies=download_proxy,headers=params) as pic:
                 pic.raise_for_status()
                 if os.path.exists(path_output):
                     current_threads -= 1
@@ -680,8 +691,7 @@ while (True):
                                     print('Max retried reached')
                                     exit()
                                 retry += 1
-                                ranking_daily_json = s.get(
-                                    format_pixiv_ranking_url(year_minus_month, str(last_i), page))
+                                ranking_daily_json = get_text_from_url(format_pixiv_ranking_url(year_minus_month, str(last_i), page))
                             except Exception as e:
                                 print('An error occurred when getting the ranking index.')
                                 print(e)
@@ -707,7 +717,7 @@ while (True):
                             print('Max retried reached')
                             exit()
                         retry += 1
-                        ranking_daily_json = s.get(format_pixiv_ranking_url(year_month, i, page))
+                        ranking_daily_json = get_text_from_url(format_pixiv_ranking_url(year_month, i, page))
                     except Exception as e:
                         print('An error occurred when getting the ranking index.')
                         print(e)
@@ -735,7 +745,7 @@ while (True):
                         print('Max retried reached')
                         exit()
                     retry += 1
-                    json_source_contents = s.get(url)
+                    json_source_contents = get_text_from_url(url)
                 except Exception as e:
                     print('An error occurred when getting the per page json file.')
                     print(e)
@@ -828,14 +838,14 @@ while (True):
                     print('Max retried reached')
                     exit()
                 retry += 1
-                profile_all = s.get(format_pixiv_user_profile_all_url(target_user_id))
+                profile_all = get_text_from_url(format_pixiv_user_profile_all_url(target_user_id))
             except Exception as e:
                 print('An error occurred when getting the profile all index.')
                 print(e)
             else:
                 break
         profile_all.raise_for_status()
-        profile_all_json = json.loads(profile_all.text)
+        profile_all_json = json.loads(profile_all)
         all_illusts = profile_all_json['body']['illusts']
         illusts_ids = all_illusts.keys()
         total_ids = len(illusts_ids)
@@ -859,14 +869,14 @@ while (True):
                     print('Max retried reached')
                     exit()
                 retry += 1
-                bookmark = s.get('https://www.pixiv.net/bookmark.php', timeout=10)
+                bookmark = get_text_from_url('https://www.pixiv.net/bookmark.php')
             except Exception as e:
                 print('An error occurred when getting the bookmark index')
                 print(e)
             else:
                 break
         bookmark.raise_for_status()
-        soup = BeautifulSoup(bookmark.text, 'html.parser')
+        soup = BeautifulSoup(bookmark, 'html.parser')
 
         book_pages = soup.find(name='ul', attrs={'class': 'page-list'})
         book_total_page = len(book_pages)
@@ -875,20 +885,8 @@ while (True):
 
         for single_page in range(1, book_total_page + 1):
             print('Starting bookmark download for page', str(single_page), 'of', book_total_page)
-            retry = 0
-            while True:
-                try:
-                    if retry > 3:
-                        print('Max retried reached')
-                        exit()
-                    retry += 1
-                    per_page = s.get(format_book_page_url + str(single_page))
-                except Exception as e:
-                    print('An error occurred when getting the per page bookmark index.')
-                    print(e)
-                else:
-                    break
-            per_soup = BeautifulSoup(per_page.text, 'html.parser')
+            per_page = get_text_from_url(format_book_page_url + str(single_page))
+            per_soup = BeautifulSoup(per_page, 'html.parser')
             bookmark_datas = per_soup.find(name='ul', attrs={'class': '_image-items js-legacy-mark-unmark-list'})
             print(len(bookmark_datas))
             for marked_illust_id in bookmark_datas:
@@ -1003,7 +1001,7 @@ while (True):
         filter 2:1
             0:&nick_mf=1(full match)
             1:&nick_mf=0(parts match)           
-            
+
         path_url=home_url+type_url+key+filter+[filter_sec]+page+mode        
         '''
         search_type_list = ['search.php?', 'novel/', 'search_user.php?s_mode=s_usr']
@@ -1050,7 +1048,7 @@ while (True):
                 search_target_url = search_url + search_type + search_key_word + search_filter_0 + search_page + search_mode
                 print('Search URL:', search_target_url)
                 search_single_page_data = json.loads(
-                    BeautifulSoup(s.get(search_target_url).text, 'html.parser').find(name='input', attrs={
+                    BeautifulSoup(get_text_from_url(search_target_url), 'html.parser').find(name='input', attrs={
                         'id': 'js-mount-point-search-result-list'}).attrs['data-items'])
                 print('-------Search result start!-------')
                 illust_count = len(search_single_page_data)
@@ -1098,7 +1096,7 @@ while (True):
         illust_download_limit = int(input('Set a limit for downloading?[1-1000]:'))
         # recommender_user_and_illust_url='https://www.pixiv.net/rpc/index.php?mode=get_recommend_users_and_works_by_user_ids&user_ids=211974,6148565,11&user_num=30&work_num=5'
         recommender_illust_url = 'https://www.pixiv.net/rpc/recommender.php?type=illust&sample_illusts=auto&num_recommendations=1000&page=discovery&mode=all'
-        illusts_ids = json.loads(s.get(recommender_illust_url).text)['recommendations']
+        illusts_ids = json.loads(get_text_from_url(recommender_illust_url))['recommendations']
         print('illust_count:', len(illusts_ids))
         for single_id in range(0, illust_download_limit):
             illust_infos = get_illust_infos_from_illust_url(format_pixiv_illust_url(illusts_ids[single_id]))

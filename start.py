@@ -104,9 +104,9 @@ def print_with_tag(tag, data):
         data_print = ''
         for per_data in data:
             if len(data_print) == 0:
-                data_print += per_data
+                data_print += str(per_data)
             else:
-                data_print += ' ' + per_data
+                data_print += ' ' + str(per_data)
     print('[' + time.asctime(time.localtime(time.time())) + '] ' + tag + ' =>', data_print)
 
 
@@ -759,7 +759,7 @@ while (True):
                     day = i
                     break
                 else:
-                    print_with_tag(tag,["Error Status code:", ranking_json_status_code, "at day " + str(i)])
+                    print_with_tag(tag,["Error Status code:", str(ranking_json_status_code), "at day " + str(i)])
 
         start_time = time.time()
         #

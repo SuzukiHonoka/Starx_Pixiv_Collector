@@ -218,8 +218,14 @@ def get_text_from_url(url):
     retry=0
     t_url = url
     if sni_bypass:
-        t_url = t_url.replace('www.pixiv.net', server_ip)
-        s.headers['Host'] = url.split('//')[1].split('/')[0]
+        host = url.split('//')[1].split('/')[0]
+        s.headers['Host'] = host
+        host_home = 'www.pixiv.net'
+        host_account = 'accounts.pixiv.net'
+        if host == host_home:
+            t_url = t_url.replace(host_home, server_ip)
+        elif host == host_account:
+            t_url = t_url.replace(host_account, server_ip)
     while True:
         try:
             if retry > 3:

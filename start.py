@@ -220,6 +220,7 @@ def get_text_from_url(url):
     if sni_bypass:
         host = url.split('//')[1].split('/')[0]
         s.headers['Host'] = host
+        print(s.headers)
         host_home = 'www.pixiv.net'
         host_account = 'accounts.pixiv.net'
         host_dl = 'i.pximg.net'

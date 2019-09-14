@@ -223,8 +223,10 @@ def get_text_from_url(url):
         host_home = 'www.pixiv.net'
         host_account = 'accounts.pixiv.net'
         host_dl = 'i.pximg.net'
-        if host == host_home or host == host_account:
+        if host == host_home:
             t_url = t_url.replace(host_home, server_ip)
+        elif host == host_account:
+            t_url = t_url.replace(host_account, server_ip) 
         elif host == host_dl:
             t_url = t_url.replace(host_dl, dl_server_ip)
     while True:

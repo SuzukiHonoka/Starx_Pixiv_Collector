@@ -226,7 +226,7 @@ def get_text_from_url(url):
         if host == host_home:
             t_url = t_url.replace(host_home, server_ip)
         elif host == host_account:
-            t_url = t_url.replace(host_account, server_ip) 
+            t_url = t_url.replace(host_account, server_ip)
         elif host == host_dl:
             t_url = t_url.replace(host_dl, dl_server_ip)
     while True:
@@ -245,7 +245,6 @@ def update_user_cookies():
     s.cookies.clear()
     # 获取登录页面
     res = get_text_from_url(login_url)
-    res.raise_for_status()
 
     pattern = re.compile(r'name="post_key" value="(.*?)">')
     r = pattern.findall(res)

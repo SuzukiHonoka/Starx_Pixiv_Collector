@@ -3,3 +3,4 @@ configparser
 bs4
 imageio
 demjson
+requests_toolbelt

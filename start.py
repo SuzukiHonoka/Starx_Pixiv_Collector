@@ -4,18 +4,16 @@ import configparser
 import json
 import os
 import re
+import sqlite3
 import sys
 import time
-import socket
-
-import requests
-from requests_toolbelt.adapters import host_header_ssl
-from bs4 import BeautifulSoup
-import demjson
 import zipfile
-import imageio
 
-import sqlite3
+import demjson
+import imageio
+import requests
+from bs4 import BeautifulSoup
+from requests_toolbelt.adapters import host_header_ssl
 
 # from selenium import webdriver
 sys_platform = sys.platform
@@ -76,6 +74,10 @@ datas = {
     'ref': '',
     'return_to': 'https://www.pixiv.net/'
 }
+#
+
+#
+
 login_url = 'https://accounts.pixiv.net/login'
 post_url = 'https://accounts.pixiv.net/api/login?lang=en'
 # 当前日期
@@ -201,7 +203,7 @@ config_and_cookies_check()
 
 
 def change_params_and_get_the_session():
-    global params, datas, login_url, post_url, s
+    global params, datas, login_url, post_url, s, dl_session
     tag = 'Change_Params_And_Get_The_Session'
     print_with_tag(tag, 'Changing Request params..')
     datas['pixiv_id'] = pixiv_user_name
@@ -209,6 +211,7 @@ def change_params_and_get_the_session():
     print_with_tag(tag, 'Post data params changed.')
     s = requests.Session()
     s.headers = params
+    # dl_session = requests.Session()
     print_with_tag(tag, 'Session started.')
 
 
@@ -269,7 +272,9 @@ def proxy_and_sni_switch():
             print_with_tag(tag, ['DL Server IP =>', dl_server_ip])
             post_url = post_url.replace('accounts.pixiv.net', server_ip)
             print_with_tag(tag, 'Setting up SSLadapter..')
+            # common
             s.mount('https://', host_header_ssl.HostHeaderSSLAdapter())
+            # download
             print_with_tag(tag, 'SNI Bypass done.')
 
 
@@ -299,7 +304,7 @@ def get_text_from_url(url, mode=1):
             t_url = t_url.replace(host_account, server_ip)
         elif host == host_dl:
             t_url = t_url.replace(host_dl, dl_server_ip)
-        print_with_tag(tag, ['SNI Host =>', host])
+        print_with_tag(tag, ['SNI HOST =>', host])
         print_with_tag(tag, ['SNI URL =>', t_url])
     while True:
         try:
@@ -315,6 +320,7 @@ def get_text_from_url(url, mode=1):
             print_with_tag(tag, ['Error Request URL:', url])
             print_with_tag(tag, ['Retry count:', retry])
             print_with_tag(tag, ['Error INFO:', e])
+            # traceback.print_exc()
 
 
 def update_user_cookies():
@@ -433,14 +439,14 @@ ranking_types = ['daily', 'weekly', 'monthly', 'rookie', 'original', 'male', 'fe
 
 
 def format_pixiv_ranking_url(year_month, day, page, mode=1):
-    tag='Ranking_Url_Format'
+    tag = 'Ranking_Url_Format'
     ranking_type = "daily"
     if mode < 12:
         ranking_type = ranking_types[mode]
     else:
-        print_with_tag(tag,"Unknown Mode")
+        print_with_tag(tag, "Unknown Mode")
         exit()
-    print_with_tag(tag,['Type:', ranking_type])
+    print_with_tag(tag, ['Type:', ranking_type])
     ranking_url = 'https://www.pixiv.net/ranking.php?mode=' + ranking_type + '&date=' + year_month + str(
         day) + '&p=' + str(
         page) + '&format=json'
@@ -454,12 +460,12 @@ def format_pixiv_illust_url(illust_id):
 
 
 def get_pixiv_user_name():
-    tag='Get_Pixiv_User_Name'
+    tag = 'Get_Pixiv_User_Name'
     # Check if cookies works.
     pixiv_www_url = 'https://www.pixiv.net/'
     check_soup = BeautifulSoup(get_text_from_url(pixiv_www_url), 'html.parser')
-    pixiv_user_nick_name = check_soup.find(name='a',attrs={'class': 'user-name js-click-trackable-later'}).string
-    print_with_tag(tag,['Login as', pixiv_user_nick_name])
+    pixiv_user_nick_name = check_soup.find(name='a', attrs={'class': 'user-name js-click-trackable-later'}).string
+    print_with_tag(tag, ['Login as', pixiv_user_nick_name])
 
 
 #
@@ -471,35 +477,35 @@ def get_pixiv_user_name():
 
 
 def update_database(illustID, illustTitle, illustType, userId, userName, tags, urls):
-    tag='Update_Database'
+    tag = 'Update_Database'
     # Connect database
     conn = sqlite3.connect('illust_data.db')
     c = conn.cursor()
     # Create table
     if len(c.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='ILLUST_DATA'").fetchall()) == 0:
-        print_with_tag(tag,'Creating table..')
+        print_with_tag(tag, 'Creating table..')
         c.execute('''CREATE TABLE ILLUST_DATA
                      (ID INT PRIMARY KEY NOT NULL, TITLE TEXT NOT NULL, TYPE INT NOT NULL, USER_ID INT NOT NULL,USER_NAME TEXT NOT NULL,TAGS TEXT NOT NULL,IMG_SRC TEXT NOT NULL)''')
-        print_with_tag(tag,'Done.')
+        print_with_tag(tag, 'Done.')
     if len(c.execute("SELECT ID FROM ILLUST_DATA WHERE ID = ?", (str(illustID),)).fetchall()) == 0:
-        print_with_tag(tag,['Ready to insert data for ID:', str(illustID)])
+        print_with_tag(tag, ['Ready to insert data for ID:', str(illustID)])
         # Insert a row of data
         sql = "INSERT INTO ILLUST_DATA(ID,TITLE,TYPE,USER_ID,USER_NAME,TAGS,IMG_SRC)VALUES(?,?,?,?,?,?,?)"
         c.execute(sql, (str(illustID), str(illustTitle), str(illustType),
                         str(userId), str(userName), str(tags), str(urls)))
-        print_with_tag(tag,'Insert done.')
+        print_with_tag(tag, 'Insert done.')
         # Save (commit) the changes
         conn.commit()
-        print_with_tag(tag,'Committed.')
+        print_with_tag(tag, 'Committed.')
     else:
-        print_with_tag(tag,['ID exist:', str(illustID)])
+        print_with_tag(tag, ['ID exist:', str(illustID)])
     # We can also close the connection if we are done with it.
     # Just be sure any changes have been committed or they will be lost.
     conn.close()
 
 
 def format_pixiv_illust_original_url(id_url, mode=1):
-    tag='Format_Pixiv_Illust_Original_Url'
+    tag = 'Format_Pixiv_Illust_Original_Url'
     if mode == 1:
         contents = get_text_from_url(id_url)
         try:
@@ -508,8 +514,8 @@ def format_pixiv_illust_original_url(id_url, mode=1):
             final_dict = json.loads("{" + img_src[0] + "}")
             return final_dict['urls']['original']
         except Exception as e:
-            print_with_tag(tag,"An error occurred when parsing the json file.")
-            print_with_tag(tag,e)
+            print_with_tag(tag, "An error occurred when parsing the json file.")
+            print_with_tag(tag, e)
     elif mode == 2:
         data_list = []
         json_datas = get_text_from_url(id_url)
@@ -568,7 +574,7 @@ def format_multi_illust_json_url(multi_illust_id):
 
 
 def dynamic_download_and_Synthesizing(illust_id, title=None, prefix=None):
-    tag='Dynamic_Download_And_Synthesizing'
+    tag = 'Dynamic_Download_And_Synthesizing'
     d_json_data = 'https://www.pixiv.net/ajax/illust/' + str(illust_id) + '/ugoira_meta'
     d_json_decoded = json.loads(get_text_from_url(d_json_data)['body'])
     src_zip_url = d_json_decoded['originalSrc']
@@ -581,8 +587,8 @@ def dynamic_download_and_Synthesizing(illust_id, title=None, prefix=None):
     download_thread(src_zip_url, save_path, None, 'TEMP' + global_symbol + str(illust_id))
     while not os.path.exists(src_saved_path + '.done'):
         time.sleep(1)
-        print_with_tag(tag,'Waiting for complete...')
-    print_with_tag(tag,['Zip target downloaded:', src_saved_path])
+        print_with_tag(tag, 'Waiting for complete...')
+    print_with_tag(tag, ['Zip target downloaded:', src_saved_path])
     with zipfile.ZipFile(src_saved_path, 'r') as zip_file:
         zip_file.extractall(path=src_saved_dir)
     # get each frame
@@ -593,7 +599,7 @@ def dynamic_download_and_Synthesizing(illust_id, title=None, prefix=None):
             if file.endswith('jpg') or file.endswith('png'):
                 sort_by_num.append(src_saved_dir + global_symbol + file)
     sort_by_num.sort()
-    print_with_tag(tag,'Reading each frame..')
+    print_with_tag(tag, 'Reading each frame..')
     for each_frame in sort_by_num:
         frames.append(imageio.imread(each_frame))
     gif_save_dir = save_path + str(prefix) + global_symbol + year_month + str(
@@ -601,40 +607,51 @@ def dynamic_download_and_Synthesizing(illust_id, title=None, prefix=None):
     gif_name_format = re.sub('[\/:*?"<>|]', '_', str(title)) + '-' + str(illust_id) + '.gif'
     if not os.path.exists(gif_save_dir):
         os.makedirs(gif_save_dir)
-    print_with_tag(tag,'Synthesizing dynamic images..')
+    print_with_tag(tag, 'Synthesizing dynamic images..')
     try:
         imageio.mimsave(gif_save_dir + gif_name_format, frames, duration=src_img_delay)
     except Exception as e:
-        print_with_tag(tag,[gif_save_dir + gif_name_format])
-        print_with_tag(tag,e)
+        print_with_tag(tag, [gif_save_dir + gif_name_format])
+        print_with_tag(tag, e)
         exit()
 
 
 def download_file(url, path, sign=False):
-    tag='\nDownload_File'
-    print_with_tag(tag,['Download URL:', url])
+    tag = 'Download_File'
+    print_with_tag(tag, ['Original Download URL:', url])
     download_proxy = s.proxies
-
     global current_threads
     current_threads += 1
+    host_dl = ''
     if d_dtrp_enable:
         url = url.replace('i.pximg.net', d_dtrp_address)
+        host_dl = d_dtrp_address
         download_proxy = None
+        print_with_tag(tag,['DTRP URL =>', url])
+        print_with_tag(tag,['DTRP HOST =>', host_dl])
 
-    print_with_tag(tag,["Thread ID:" + str(_thread.get_ident())])
+    else:
+        if sni_bypass:
+            url = url.replace('i.pximg.net', dl_server_ip)
+            host_dl = 'i.pximg.net'
+            print_with_tag(tag, ['SNI HOST =>', host_dl])
+            print_with_tag(tag,['SNI URL =>',url])
+            download_proxy = None
+
+    print_with_tag(tag, ["Thread ID:" + str(_thread.get_ident())])
     path_output = path
     retry = 0
     while True:
         try:
-            if retry > 3:
-                print_with_tag(tag,'Max retried reached')
+            if retry == 3:
+                print_with_tag(tag, 'Max retried reached')
                 exit()
             retry += 1
-            with requests.get(url, stream=True, proxies=download_proxy, headers=params) as pic:
+            with s.get(url, stream=True, proxies=download_proxy, headers={'host': host_dl}) as pic:
                 pic.raise_for_status()
                 if os.path.exists(path_output):
                     current_threads -= 1
-                    print_with_tag(tag,["File exists:" + path_output, "Skip!"])
+                    print_with_tag(tag, ["File exists:" + path_output, "Skip!"])
                     return False
                 try:
                     with open(path_output, 'wb') as f:
@@ -642,24 +659,23 @@ def download_file(url, path, sign=False):
                             if chunk:
                                 f.write(chunk)
                 except Exception as e:
-                    print_with_tag(tag,'An error occurred when saving files.')
-                    print_with_tag(tag,e)
+                    print_with_tag(tag, 'An error occurred when saving files.')
+                    print_with_tag(tag, e)
                 else:
-                    print_with_tag(tag,["File Saved:" + path_output])
+                    print_with_tag(tag, ["File Saved:" + path_output])
                     if sign:
                         with open(path_output + '.done', 'w+') as f:
                             f.write('\nDone!')
-                            print_with_tag(tag,'Created a sign for main thread.')
+                            print_with_tag(tag, 'Created a sign for main thread.')
         except Exception as e:
-            print_with_tag(tag,'An error occurred when Downloading files.')
-            print_with_tag(tag,e)
+            print_with_tag(tag, 'An error occurred when Downloading files.')
+            print_with_tag(tag, e)
         else:
             current_threads -= 1
             return True
 
-
 def download_thread(url, path, exfile_name=None, exfile_dir=None):
-    tag='Download_Thread'
+    tag = 'Download_Thread'
     wait_for_limit()
     local_path = path
     give_it_a_sign = False
@@ -671,11 +687,11 @@ def download_thread(url, path, exfile_name=None, exfile_dir=None):
     if exfile_name is not None:
         local_filename = exfile_name + "-" + local_filename
     path_output = local_path + local_filename
-    print_with_tag(tag,["File Location:" + path_output])
+    print_with_tag(tag, ["File Location:" + path_output])
     if not os.path.exists(local_path):
-        print_with_tag(tag,"Folder doesn't exists!!")
+        print_with_tag(tag, "Folder doesn't exists!!")
         os.makedirs(local_path)
-        print_with_tag(tag,"Folder Created.")
+        print_with_tag(tag, "Folder Created.")
 
     retry_count = 0
     while True:
@@ -683,42 +699,42 @@ def download_thread(url, path, exfile_name=None, exfile_dir=None):
             _thread.TIMEOUT_MAX = 60
             _thread.start_new_thread(download_file, (url, path_output, give_it_a_sign))
         except:
-            print_with_tag(tag,"Error.")
+            print_with_tag(tag, "Error.")
             if retry_count == 3:
-                print_with_tag(tag,"Not wokring..")
-                print_with_tag(tag,"Skip!!")
+                print_with_tag(tag, "Not wokring..")
+                print_with_tag(tag, "Skip!!")
             else:
-                print_with_tag(tag,"Starting retry..")
+                print_with_tag(tag, "Starting retry..")
                 retry_count += 1
         else:
-            print_with_tag(tag,"Download thread successfully started!")
+            print_with_tag(tag, "Download thread successfully started!")
             break
-    print_with_tag(tag,['Threads_count:', str(current_threads)])
+    print_with_tag(tag, ['Threads_count:', str(current_threads)])
 
 
 def wait_for_limit():
-    tag='Limit_Lock'
+    tag = 'Limit_Lock'
     while current_threads >= subthreads_limit:
-        print_with_tag(tag,'Max Threads Reached,Waiting for release..')
+        print_with_tag(tag, 'Max Threads Reached,Waiting for release..')
         time.sleep(1)
 
 
 while (True):
-    tag='Main_Stage'
+    tag = 'Main_Stage'
     current_threads = 0
     get_pixiv_user_name()
-    print_with_tag(tag,'What do you want to do?')
-    print_with_tag(tag,"Download the selected ranking pics(1)")
-    print_with_tag(tag,"Download the pics from a user(2)")
-    print_with_tag(tag,'Download the pics that you marked(3)')
-    print_with_tag(tag,'Update the user cookies(4)')
-    print_with_tag(tag,'Parse an illust info with given illust id(5)')
-    print_with_tag(tag,'Search something via single key word(6)')
-    print_with_tag(tag,'Download the illusts from recommender(7)')
-    print_with_tag(tag,'Exit(8)')
+    print_with_tag(tag, 'What do you want to do?')
+    print_with_tag(tag, "Download the selected ranking pics(1)")
+    print_with_tag(tag, "Download the pics from a user(2)")
+    print_with_tag(tag, 'Download the pics that you marked(3)')
+    print_with_tag(tag, 'Update the user cookies(4)')
+    print_with_tag(tag, 'Parse an illust info with given illust id(5)')
+    print_with_tag(tag, 'Search something via single key word(6)')
+    print_with_tag(tag, 'Download the illusts from recommender(7)')
+    print_with_tag(tag, 'Exit(8)')
     choose = input("Your choose[1-8]:")
     if choose == '1':
-        tag='Download_Ranking_Pics'
+        tag = 'Download_Ranking_Pics'
         mode_asked = int(input('Please choose the ranking type(0-11):'))
         # 倒序取出可用日期
         if input_yn('Do you want to choose a date?'):
@@ -727,48 +743,50 @@ while (True):
             year_month = date_dict[0] + date_dict[1]
             day = date_dict[2]
         else:
-            print_with_tag(tag,'Testing available day of mode 1..')
+            print_with_tag(tag, 'Testing available day of mode 1..')
             for i in reversed(range(1, int(day) + 1)):
                 if i == 1:
                     last_month = int(time.strftime('%m', time.localtime())) - 1
-                    print_with_tag(tag,['Changing the month to', str(last_month)])
+                    print_with_tag(tag, ['Changing the month to', str(last_month)])
                     if last_month < 10:
                         last_month = '0' + str(last_month)
                     year_minus_month = time.strftime('%Y', time.localtime()) + str(last_month)
                     for last_i in reversed(range(1, 32)):
-                        print_with_tag(tag,["Changing the day param to :", last_i])
-                        ranking_daily_json = get_text_from_url(format_pixiv_ranking_url(year_minus_month, str(last_i), page))
+                        print_with_tag(tag, ["Changing the day param to :", last_i])
+                        ranking_daily_json = get_text_from_url(
+                            format_pixiv_ranking_url(year_minus_month, str(last_i), page))
                         if get_text_from_url(
-                                    format_pixiv_ranking_url(year_minus_month, str(last_i), page),2) == 200:
-                            print_with_tag(tag,["Found the available Day at day " + str(last_i)])
-                            print_with_tag(tag,['Final ranking date:', year_minus_month + str(last_i)])
+                                format_pixiv_ranking_url(year_minus_month, str(last_i), page), 2) == 200:
+                            print_with_tag(tag, ["Found the available Day at day " + str(last_i)])
+                            print_with_tag(tag, ['Final ranking date:', year_minus_month + str(last_i)])
                             year_month = year_minus_month
                             day = last_i
                             break
                         else:
-                            print_with_tag(tag,["Error Status code:", get_text_from_url(format_pixiv_ranking_url(year_minus_month, str(last_i), page),2), "at day " + str(i)])
+                            print_with_tag(tag, ["Error Status code:", get_text_from_url(
+                                format_pixiv_ranking_url(year_minus_month, str(last_i), page), 2), "at day " + str(i)])
                     break
                 if i < 10:
-                    print_with_tag(tag,'Auto add zero..')
+                    print_with_tag(tag, 'Auto add zero..')
                     i = '0' + str(i)
-                print_with_tag(tag,["Changing day param to :", str(i)])
+                print_with_tag(tag, ["Changing day param to :", str(i)])
                 ranking_daily_json = get_text_from_url(format_pixiv_ranking_url(year_month, i, page))
-                ranking_json_status_code=get_text_from_url(format_pixiv_ranking_url(year_month, i, page),2)
+                ranking_json_status_code = get_text_from_url(format_pixiv_ranking_url(year_month, i, page), 2)
                 if ranking_json_status_code == 200:
-                    print_with_tag(tag,"Found the available Day at day " + str(i))
+                    print_with_tag(tag, "Found the available Day at day " + str(i))
                     day = i
                     break
                 else:
-                    print_with_tag(tag,["Error Status code:", str(ranking_json_status_code), "at day " + str(i)])
+                    print_with_tag(tag, ["Error Status code:", str(ranking_json_status_code), "at day " + str(i)])
 
         start_time = time.time()
         #
         # 共10页json
         for i in range(1, max_page + 1):
-            print_with_tag(tag,["Catching Page:", i])
-            print_with_tag(tag,['You selected:', mode_asked])
+            print_with_tag(tag, ["Catching Page:", str(i)])
+            print_with_tag(tag, ['You selected:', mode_asked])
             url = format_pixiv_ranking_url(year_month, day, i, mode_asked)
-            print_with_tag(tag,["URL TARGET: " + url])
+            print_with_tag(tag, ["URL TARGET: " + url])
             json_source_contents = get_text_from_url(url)
             json_data = json.loads(json_source_contents)
             temp_header = s.headers
@@ -778,7 +796,7 @@ while (True):
                 single_data = json_data['contents'][item]
                 title = single_data['title']
                 date = single_data['date']
-                tag = single_data['tags']
+                tagd = single_data['tags']
                 user_name = single_data['user_name']
                 user_id = single_data['user_id']
                 illust_id = single_data['illust_id']
@@ -793,68 +811,56 @@ while (True):
                     illust_type = 'Multiple'
                 elif illust_type_code == '2':
                     illust_type = 'Dynamic'
-                print('-----Index of:', i, "Count", item)
-                print('Title:', title)
-                print('Date:', date)
-                print('Tag:', tag)
-                print('User_name:', user_name)
-                print('User_id:', user_id)
-                print('illust_id:', illust_id)
-                print('Rank:', rank)
-                print('Rating_count:', rating_count)
-                print('View_count:', view_count)
-                print('Type:', illust_type)
-
+                if print_info:
+                    print('-----Index of:', i, "Count", item)
+                    print('Title:', title)
+                    print('Date:', date)
+                    print('Tag:', tagd)
+                    print('User_name:', user_name)
+                    print('User_id:', user_id)
+                    print('illust_id:', illust_id)
+                    print('Rank:', rank)
+                    print('Rating_count:', rating_count)
+                    print('View_count:', view_count)
+                    print('Type:', illust_type)
                 info_data = get_illust_infos_from_illust_url(format_pixiv_illust_url(illust_id))
                 if int(bookmarked_filter) > 0:
                     current_marked = int(info_data['bookmarkCount'])
                     if current_marked < int(bookmarked_filter):
-                        print(illust_id, 'current_marked:', current_marked, 'pass!!')
+                        print_with_tag(tag, [illust_id, 'current_marked:', current_marked, 'pass!!'])
                         continue
                 if illust_type_code == '0':
-                    print('Single Download start!!')
+                    print_with_tag(tag, 'Single Download start!!')
                     # pic_url = format_pixiv_illust_original_url(format_pixiv_illust_url(illust_id))
                     pic_url = info_data['urls']['original']
 
-                    print('Picture source address:', pic_url)
+                    print_with_tag(tag, ['Picture source address:', pic_url])
                     download_thread(pic_url, save_path, re.sub('[\/:*?"<>|]', '_', title),
                                     ranking_types[mode_asked] + global_symbol + year_month + str(day))
                 elif illust_type_code == '1':
                     if not download_manga_enable:
                         continue
-                    print('Multiple Download start!!')
+                    print_with_tag(tag, 'Multiple Download start!!')
                     data_listed = format_pixiv_illust_original_url(format_multi_illust_json_url(illust_id), 2)
                     for each_one in data_listed:
-                        print('One of Multiple Picture source address:', each_one)
+                        print_with_tag(tag, ['One of Multiple Picture source address:', each_one])
                         download_thread(each_one, save_path, re.sub('[\/:*?"<>|]', '_', title),
                                         ranking_types[mode_asked] + global_symbol + year_month + str(
                                             day) + global_symbol + 'M-' + str(illust_id))
                 elif illust_type_code == '2':
                     if not download_gif_enable:
                         continue
-                    print('Dynamic Download start!')
+                    print_with_tag(tag, 'Dynamic Download start!')
                     time_start_d_s = time.time()
                     dynamic_download_and_Synthesizing(illust_id, title, ranking_types[mode_asked])
-                    print('Dynamic saved.')
-                    print('Synthesizing cost:', time.time() - time_start_d_s)
-
+                    print_with_tag(tag, 'Dynamic saved.')
+                    print_with_tag(tag, ['Synthesizing cost:', time.time() - time_start_d_s])
         print('Job finished!')
         print('Total cost:', time.time() - start_time)
     elif choose == '2':
+        tag = 'Download_Pics_From_A_User'
         target_user_id = int(input("Please enter the target user id(like 17300903):"))
-        retry = 0
-        while True:
-            try:
-                if retry > 3:
-                    print('Max retried reached')
-                    exit()
-                retry += 1
-                profile_all = get_text_from_url(format_pixiv_user_profile_all_url(target_user_id))
-            except Exception as e:
-                print('An error occurred when getting the profile all index.')
-                print(e)
-            else:
-                break
+        profile_all = get_text_from_url(format_pixiv_user_profile_all_url(target_user_id))
         profile_all_json = json.loads(profile_all)
         all_illusts = profile_all_json['body']['illusts']
         illusts_ids = all_illusts.keys()
@@ -862,16 +868,17 @@ while (True):
         download_count = 0
         for single_illust in illusts_ids:
             download_count += 1
-            print("Downloading", str(download_count), "of", total_ids)
+            print_with_tag(tag, ["Downloading", str(download_count), "of", total_ids])
             download_thread(format_pixiv_illust_original_url(format_pixiv_illust_url(single_illust)),
                             save_path,
                             re.sub('[\/:*?"<>|]', '_',
                                    get_illust_infos_from_illust_url(format_pixiv_illust_url(single_illust))[
                                        'illustTitle']),
                             str(target_user_id))
-        print('\nALL Done')
+        print_with_tag(tag, 'ALL Done')
     elif choose == '3':
-        print('Catching your bookmark..')
+        tag = 'Download_From_Bookmark'
+        print_with_tag(tag, 'Catching your bookmark..')
         bookmark = get_text_from_url('https://www.pixiv.net/bookmark.php')
         soup = BeautifulSoup(bookmark, 'html.parser')
 
@@ -881,11 +888,10 @@ while (True):
         format_book_page_url = 'https://www.pixiv.net/bookmark.php?rest=show&p='
 
         for single_page in range(1, book_total_page + 1):
-            print('Starting bookmark download for page', str(single_page), 'of', book_total_page)
+            print_with_tag(tag, ['Starting bookmark download for page', str(single_page), 'of', book_total_page])
             per_page = get_text_from_url(format_book_page_url + str(single_page))
             per_soup = BeautifulSoup(per_page, 'html.parser')
             bookmark_datas = per_soup.find(name='ul', attrs={'class': '_image-items js-legacy-mark-unmark-list'})
-            print(len(bookmark_datas))
             for marked_illust_id in bookmark_datas:
                 switch = marked_illust_id.a['class']
                 start_time = time.time()
@@ -903,13 +909,14 @@ while (True):
                     title = title_class['title']
                     user_name_class = marked_illust_id.find(name="a", attrs={'class': 'user ui-profile-popup'}).attrs
                     user_name = user_name_class['data-user_name']
-                    print('----- ')
-                    print('Title:', title)
-                    print('User_id:', user_id)
-                    print('User_name:', user_name)
-                    print('illust_id:', illust_id)
-                    print('Tag:', tag)
-                    print('Type:', illust_type)
+                    if print_info:
+                        print('----- ')
+                        print('Title:', title)
+                        print('User_id:', user_id)
+                        print('User_name:', user_name)
+                        print('illust_id:', illust_id)
+                        print('Tag:', tag)
+                        print('Type:', illust_type)
                     download_thread(format_pixiv_illust_original_url(format_pixiv_illust_url(illust_id)), save_path,
                                     re.sub('[\/:*?"<>|]', '_', title),
                                     'Bookmark')
@@ -927,52 +934,55 @@ while (True):
                     title = title_class['title']
                     user_name_class = marked_illust_id.find(name="a", attrs={'class': 'user ui-profile-popup'}).attrs
                     user_name = user_name_class['data-user_name']
-                    print('----- ')
-                    print('Title:', title)
-                    print('User_id:', user_id)
-                    print('User_name:', user_name)
-                    print('illust_id:', illust_id)
-                    print('Tag:', tag)
-                    print('Type:', illust_type)
+                    if print_info:
+                        print('----- ')
+                        print('Title:', title)
+                        print('User_id:', user_id)
+                        print('User_name:', user_name)
+                        print('illust_id:', illust_id)
+                        print('Tag:', tag)
+                        print('Type:', illust_type)
 
                     data_listed = format_pixiv_illust_original_url(format_multi_illust_json_url(illust_id), 2)
                     for each_one in data_listed:
-                        print('Start downloading multiple picture..')
-                        print('Single_URL:', each_one)
+                        print_with_tag(tag, 'Start downloading multiple picture..')
+                        print_with_tag(tag, ['Single_URL:', each_one])
                         download_thread(each_one, save_path, re.sub('[\/:*?"<>|]', '_', title),
                                         'Bookmark/M-' + illust_id)
-                print('Total cost:', time.time() - start_time)
-        print('ALL DONE!')
+                print_with_tag(tag, ['Total cost:', time.time() - start_time])
+        print_with_tag(tag, 'ALL DONE!')
     elif choose == '4':
         update_user_cookies()
     elif choose == '5':
+        tag = 'Parse_Illust_Info'
         single_illust = input('Please enter the single illust id(like 76073572):')
         illust_infos = get_illust_infos_from_illust_url(format_pixiv_illust_url(single_illust))
-        print('---------INFO-of-ID:' + single_illust + '---------')
+        print_with_tag(tag, ['---------INFO-of-ID:' + single_illust + '---------'])
         for each_info in list(dict.keys(illust_infos)):
-            print(each_info + ':', str(illust_infos[each_info]))
+            print_with_tag(tag, [each_info + ':', str(illust_infos[each_info])])
         if input_yn('Do you want to download it?'):
             illust_type = illust_infos['illustType']
             illust_id = illust_infos['illustId']
             illust_title = illust_infos['illustTitle']
             if illust_type == 0:
-                print('Starting Download!')
+                print_with_tag(tag, 'Starting Download!')
                 download_thread(illust_infos['urls']['original'], save_path,
                                 re.sub('[\/:*?"<>|]', '_', illust_title),
                                 'manual' + global_symbol + year_month + str(day))
             elif illust_type == 1:
-                print('Parsing datas...')
+                print_with_tag(tag, 'Parsing datas...')
                 data_listed = format_pixiv_illust_original_url(format_multi_illust_json_url(illust_id), 2)
                 for each_one in data_listed:
-                    print('One of Multiple Picture source address:', each_one)
-                    print('Starting Download!')
+                    print_with_tag(tag, ['One of Multiple Picture source address:', each_one])
+                    print_with_tag(tag, 'Starting Download!')
                     download_thread(each_one, save_path, re.sub('[\/:*?"<>|]', '_', illust_title),
                                     'manual' + global_symbol + year_month + str(
                                         day) + global_symbol + 'M-' + str(illust_id))
             elif illust_type == 2:
                 dynamic_download_and_Synthesizing(illust_id, illust_title, 'manual')
-        print('Done!')
+        print_with_tag(tag, 'Done!')
     elif choose == '6':
+        tag = 'Search_Via_Key_Word'
         '''
         mode 
             0:all
@@ -1043,17 +1053,17 @@ while (True):
         while True:
             if type_int == 0:
                 search_target_url = search_url + search_type + search_key_word + search_filter_0 + search_page + search_mode
-                print('Search URL:', search_target_url)
+                print_with_tag(tag, ['Search URL:', search_target_url])
                 search_single_page_data = json.loads(
                     BeautifulSoup(get_text_from_url(search_target_url), 'html.parser').find(name='input', attrs={
                         'id': 'js-mount-point-search-result-list'}).attrs['data-items'])
-                print('-------Search result start!-------')
+                print_with_tag(tag, ['-------Search result start!-------'])
                 illust_count = len(search_single_page_data)
                 for single_illust_count in range(0, illust_count):
-                    print('#', single_illust_count)
+                    print_with_tag(tag, ['#', single_illust_count])
                     for per_info in list(dict.keys(search_single_page_data[single_illust_count])):
-                        print(per_info + ':', search_single_page_data[single_illust_count][per_info])
-                print('-------End search result for page', search_page.split('=')[1] + '-------')
+                        print_with_tag(tag, [per_info + ':', search_single_page_data[single_illust_count][per_info]])
+                print_with_tag(tag, ['-------End search result for page', search_page.split('=')[1] + '-------'])
                 if input_yn('Do you want to download one?'):
                     download_target = int(input('Which one you want to download?[0-' + str(illust_count - 1) + ']:'))
                     illust_id = search_single_page_data[download_target]['illustId']
@@ -1061,22 +1071,22 @@ while (True):
                     illust_type = illust_infos['illustType']
                     illust_title = illust_infos['illustTitle']
                     if illust_type == 0:
-                        print('Starting Download!')
+                        print_with_tag(tag, 'Starting Download!')
                         download_thread(illust_infos['urls']['original'], save_path,
                                         re.sub('[\/:*?"<>|]', '_', illust_title),
                                         'search' + global_symbol + year_month + str(day))
                     elif illust_type == 1:
-                        print('Parsing datas...')
+                        print_with_tag(tag, 'Parsing datas...')
                         data_listed = format_pixiv_illust_original_url(format_multi_illust_json_url(illust_id), 2)
                         for each_one in data_listed:
-                            print('One of Multiple Picture source address:', each_one)
-                            print('Starting Download!')
+                            print_with_tag(tag, ['One of Multiple Picture source address:', each_one])
+                            print_with_tag(tag, 'Starting Download!')
                             download_thread(each_one, save_path, re.sub('[\/:*?"<>|]', '_', illust_title),
                                             'search' + global_symbol + year_month + str(
                                                 day) + global_symbol + 'M-' + str(illust_id))
                     elif illust_type == 2:
                         dynamic_download_and_Synthesizing(illust_id, illust_title, 'search')
-                    print('Select done.')
+                    print_with_tag(tag, 'Select done.')
                 if input_yn('Do you want to switch to next page?'):
                     search_page = search_page.split('=')[0] + '=' + str(int(search_page.split('=')[1]) + 1)
                 else:
@@ -1087,36 +1097,36 @@ while (True):
                 search_target_url = search_url + search_type + prefix + search_filter_1 + search_key_word + search_filter_2_0 + search_filter_2_1 + search_page
 
 
-
-
     elif choose == '7':
+        tag = 'Download_From_Recommender'
         illust_download_limit = int(input('Set a limit for downloading?[1-1000]:'))
         # recommender_user_and_illust_url='https://www.pixiv.net/rpc/index.php?mode=get_recommend_users_and_works_by_user_ids&user_ids=211974,6148565,11&user_num=30&work_num=5'
         recommender_illust_url = 'https://www.pixiv.net/rpc/recommender.php?type=illust&sample_illusts=auto&num_recommendations=1000&page=discovery&mode=all'
         illusts_ids = json.loads(get_text_from_url(recommender_illust_url))['recommendations']
-        print('illust_count:', len(illusts_ids))
+        print_with_tag(tag, ['illust_count:', len(illusts_ids)])
         for single_id in range(0, illust_download_limit):
             illust_infos = get_illust_infos_from_illust_url(format_pixiv_illust_url(illusts_ids[single_id]))
             illust_type = illust_infos['illustType']
             illust_id = illust_infos['illustId']
             illust_title = illust_infos['illustTitle']
             if illust_type == 0:
-                print('Starting Download!')
+                print_with_tag(tag, 'Starting Download!')
                 download_thread(illust_infos['urls']['original'], save_path,
                                 re.sub('[\/:*?"<>|]', '_', illust_title),
                                 'recommender' + global_symbol + year_month + str(day))
             elif illust_type == 1:
-                print('Parsing datas...')
+                print_with_tag(tag, 'Parsing datas...')
                 data_listed = format_pixiv_illust_original_url(format_multi_illust_json_url(illust_id), 2)
                 for each_one in data_listed:
-                    print('One of Multiple Picture source address:', each_one)
-                    print('Starting Download!')
+                    print_with_tag(tag, ['One of Multiple Picture source address:', each_one])
+                    print_with_tag(tag, 'Starting Download!')
                     download_thread(each_one, save_path, re.sub('[\/:*?"<>|]', '_', illust_title),
                                     'recommender' + global_symbol + year_month + str(
                                         day) + global_symbol + 'M-' + str(illust_id))
             elif illust_type == 2:
                 dynamic_download_and_Synthesizing(illust_id, illust_title, 'recommender')
-        # print(illusts_ids)
+
     elif choose == '8':
-        print('Bye!!')
+        tag = 'Exit'
+        print_with_tag(tag, 'Bye!!')
         exit()

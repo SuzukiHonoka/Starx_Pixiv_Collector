@@ -225,7 +225,7 @@ def get_text_from_url(url):
         if host == host_home:
             t_url = t_url.replace(host_home, server_ip)
         elif host == host_account:
-            t_url = t_url.replace(host_account, server_ip)
+            t_url = t_url.replace(host_account, dl_server_ip)
     while True:
         try:
             if retry > 3:

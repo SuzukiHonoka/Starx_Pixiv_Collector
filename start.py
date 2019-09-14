@@ -220,6 +220,7 @@ def get_dns_data_from_doh_server(name, type):
     :param name: str ['pixiv.net'...]
     :param type: str ['A','AAAA'...]
     :return:str
+    FAQ:https://developers.cloudflare.com/1.1.1.1/dns-over-https/json-format/
     '''
     tag = 'DoH_Request_Format'
     doh_server = 'https://cloudflare-dns.com/dns-query?'
@@ -750,7 +751,7 @@ while (True):
                 if i < 10:
                     print_with_tag(tag,'Auto add zero..')
                     i = '0' + str(i)
-                print_with_tag(tag,["Changing day param to :", i])
+                print_with_tag(tag,["Changing day param to :", str(i)])
                 ranking_daily_json = get_text_from_url(format_pixiv_ranking_url(year_month, i, page))
                 ranking_json_status_code=get_text_from_url(format_pixiv_ranking_url(year_month, i, page),2)
                 if ranking_json_status_code == 200:

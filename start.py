@@ -9,7 +9,6 @@ import time
 import socket
 
 import requests
-# SNI Bypass prepare
 from requests_toolbelt.adapters import host_header_ssl
 from bs4 import BeautifulSoup
 import demjson
@@ -19,30 +18,17 @@ import imageio
 import sqlite3
 
 # from selenium import webdriver
-
 sys_platform = sys.platform
-
-print('Welcome to use Pixiv ranking collector!!')
-print('This program is powered by Starx.')
-print('Your are using', sys_platform, "platform.")
 
 # symbol_win='\\'
 # symbol_linux='/'
 global_symbol = '/'
-# if sys_platform == 'linux':
-#     global_symbol = symbol_linux
-# elif sys_platform == 'win32':
-#     global_symbol = symbol_win
-# elif sys_platform == 'win64':
-#     global_symbol = symbol_win
-# else:
-#     global_symbol = symbol_linux
-# #
 
 program_path = os.path.abspath('.') + global_symbol
 
 save_path = os.path.abspath('.') + global_symbol + "Pixiv_Download" + global_symbol
 ###################
+tag = 'Main'
 sni_bypass = False
 server_ip = ''
 dl_server_ip = ''
@@ -68,90 +54,7 @@ For CN users only , PLEASE DON'T USE IT IF YOU ALREADY HAVE PROXY SERVER!
 '''
 d_dtrp_enable = False
 d_dtrp_address = 'pximg.starx.workers.dev'
-
-
 ###################
-
-def input_yn(str):
-    return input(str + ' (Y/n):').lower() == 'y'
-
-
-if not os.path.exists('config.ini'):
-    if input_yn('Do you want to use socks5 proxy?'):
-        proxy_enable = True
-        proxy_host = input('Please enter the socks5 server host ip address:')
-        proxy_port = input('Please enter the socks5 server host port number:')
-    else:
-        print('Not using the proxy..')
-        proxy_enable = False
-        if input_yn('Did you want to use SNI Bypass mode?'):
-            sni_bypass = True
-
-    pixiv_user_name = input("Please enter your own pixiv account name:")
-    pixiv_user_pass = input("Please enter your own pixiv account password:")
-    if input_yn('Do you want to change default save path?'):
-        cust_path_enable = True
-        save_path = input("Please enter the full path to save the data:") + global_symbol
-    if input_yn('Do you want to display the illust info when downloading?'):
-        print_info = True
-    if input_yn('Do you want to filter the ranking illust when downloading?'):
-        bookmarked_filter = int(input('Please enter the bookmarked value to filter:'))
-    if input_yn('Are you sure about that account information correct?'):
-        # OPTIONAL
-        if input_yn('Do you want to save this configuration as a file?'):
-            path = program_path
-            config_name = "config.ini"
-            abs_path = path + config_name
-            if os.path.exists(abs_path):
-                with open(abs_path, 'w'):
-                    print('Creating empty config file')
-            config = configparser.RawConfigParser()
-            ###########
-            config.add_section('Connection')
-            config.set('Connection', 'sni_bypass_enable', str(sni_bypass))
-            ###########
-            config.add_section('Proxy')
-            config.set('Proxy', 'Enable', str(proxy_enable))
-            config.set('Proxy', 'IP', proxy_host)
-            config.set('Proxy', 'PORT', proxy_port)
-            config.add_section("Account")
-            config.set('Account', 'User_name', pixiv_user_name)
-            config.set('Account', 'User_pass', pixiv_user_pass)
-            config.add_section('Data')
-            config.set('Data', 'CUST_PATH_ENABLE', str(cust_path_enable))
-            config.set('Data', 'SAVE_PATH', save_path)
-            config.set('Data', 'PRINT_INFO', str(print_info))
-            config.set('Data', 'BOOKMARKED_FILTER', str(bookmarked_filter))
-            with open(abs_path, 'w+') as f:
-                config.write(f)
-        print('Done!')
-else:
-    config = configparser.ConfigParser()
-    config.read('config.ini')
-    if config['Connection']['sni_bypass_enable'] == 'True':
-        sni_bypass = True
-    if config['Proxy']['Enable'] == 'True':
-        proxy_enable = True
-    proxy_host = config['Proxy']['IP']
-    proxy_port = config['Proxy']['PORT']
-    pixiv_user_name = config['Account']['User_name']
-    pixiv_user_pass = config['Account']['User_pass']
-    if config['Data']['CUST_PATH_ENABLE'] == 'True':
-        cust_path_enable = True
-        save_path = config['Data']['SAVE_PATH']
-    if config['Data']['PRINT_INFO'] == 'True':
-        print_info = True
-    bookmarked_filter = config['Data']['BOOKMARKED_FILTER']
-if os.path.exists("cookies"):
-    with open('cookies', 'r') as f:
-        cookies = f.read()
-        if len(cookies) > 0:
-            piviv_user_cookies_is_not_empty = True
-            pixiv_user_cookies = json.loads(cookies)
-else:
-    print('Can not to find the Cookies.')
-#
-
 # init get param
 params = {
     'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) '
@@ -173,50 +76,214 @@ datas = {
     'ref': '',
     'return_to': 'https://www.pixiv.net/'
 }
-print('Changing Request params..')
-datas['pixiv_id'] = pixiv_user_name
-datas['password'] = pixiv_user_pass
-print('Done!')
-
 login_url = 'https://accounts.pixiv.net/login'
 post_url = 'https://accounts.pixiv.net/api/login?lang=en'
+# 当前日期
+year_month = time.strftime("%Y%m", time.localtime())
+day = time.strftime("%d", time.localtime())
+# param
+p_date = '&date='
+p_page = '&p='
+#
+page = 1
+max_page = 10
+# Finding the available Day
+ranking_daily_json = ""
 
-s = requests.Session()
-s.headers = params
 
-if proxy_enable:
-    print('Gonna connect to your socks5 server...')
-    try:
-        # socks.set_default_proxy(socks.SOCKS5, proxy_host, int(proxy_port))
-        # socket.socket = socks.socksocket
-        # socket.timeout = 500
-        proxies = {
-            "http": "socks5://" + proxy_host + ":" + proxy_port,
-            'https': "socks5://" + proxy_host + ":" + proxy_port
-        }
-        s.proxies = proxies
-        # print(proxies)
-    except Exception as e:
-        print('When processing the socks5 server an error occurred.')
-        print(e)
-        exit()
+#
+###################
+
+###################
+# voids
+###################
+
+def print_with_tag(tag, data):
+    data_print = data
+    if type(data) == list:
+        data_print = ''
+        for per_data in data:
+            if len(data_print) == 0:
+                data_print += per_data
+            else:
+                data_print += ' ' + per_data
+    print('[' + time.asctime(time.localtime(time.time())) + '] ' + tag + ' =>', data_print)
+
+
+print_with_tag(tag, 'Welcome to use this Pixiv ranking collector!')
+print_with_tag(tag, 'This program is powered by Starx.')
+print_with_tag(tag, ['Your are using', sys_platform, 'platform.'])
+
+
+def input_yn(str):
+    return input(str + ' (Y/N):').lower() == 'y'
+
+
+def config_and_cookies_check():
+    tag = 'Config_and_Cookies_Check_Process'
+    global proxy_enable, proxy_host, proxy_port, sni_bypass, cust_path_enable, save_path, print_info, bookmarked_filter, pixiv_user_name, pixiv_user_pass, piviv_user_cookies_is_not_empty, pixiv_user_cookies
+    if not os.path.exists('config.ini'):
+        if input_yn('Do you want to use socks5 proxy?'):
+            proxy_enable = True
+            proxy_host = input('Please enter the socks5 server host ip address:')
+            proxy_port = input('Please enter the socks5 server host port number:')
+        else:
+            print_with_tag(tag, 'Not using the proxy..')
+            proxy_enable = False
+            if input_yn('Did you want to use SNI Bypass mode?'):
+                sni_bypass = True
+        pixiv_user_name = input("Please enter your own pixiv account name:")
+        pixiv_user_pass = input("Please enter your own pixiv account password:")
+        if input_yn('Do you want to change default save path?'):
+            cust_path_enable = True
+            save_path = input("Please enter the full path to save the data:") + global_symbol
+        if input_yn('Do you want to display the illust info when downloading?'):
+            print_info = True
+        if input_yn('Do you want to filter the ranking illust when downloading?'):
+            bookmarked_filter = int(input('Please enter the bookmarked value to filter:'))
+        if input_yn('Are you sure about that account information correct?'):
+            # OPTIONAL
+            if input_yn('Do you want to save this configuration as a file?'):
+                path = program_path
+                config_name = "config.ini"
+                abs_path = path + config_name
+                if os.path.exists(abs_path):
+                    with open(abs_path, 'w'):
+                        print_with_tag(tag, 'Creating empty config file')
+                config = configparser.RawConfigParser()
+                ###########
+                config.add_section('Connection')
+                config.set('Connection', 'sni_bypass_enable', str(sni_bypass))
+                ###########
+                config.add_section('Proxy')
+                config.set('Proxy', 'Enable', str(proxy_enable))
+                config.set('Proxy', 'IP', proxy_host)
+                config.set('Proxy', 'PORT', proxy_port)
+                config.add_section("Account")
+                config.set('Account', 'User_name', pixiv_user_name)
+                config.set('Account', 'User_pass', pixiv_user_pass)
+                config.add_section('Data')
+                config.set('Data', 'CUST_PATH_ENABLE', str(cust_path_enable))
+                config.set('Data', 'SAVE_PATH', save_path)
+                config.set('Data', 'PRINT_INFO', str(print_info))
+                config.set('Data', 'BOOKMARKED_FILTER', str(bookmarked_filter))
+                with open(abs_path, 'w+') as f:
+                    config.write(f)
+            print_with_tag(tag, 'Done!')
     else:
-        print('Proxy connection seems successfully created!!')
-else:
-    print('Not using the proxy..')
-    if sni_bypass:
-        print('Experiment Function: SNI Bypass starting..')
-        server_ip = socket.gethostbyname('www.pixiv.net')
-        print('Server IP =>', server_ip)
-        dl_server_ip = socket.gethostbyname('i.pximg.net')
-        print('DL Server IP =>', dl_server_ip)
-        post_url = post_url.replace('accounts.pixiv.net',server_ip)
-        print('Setting up SSLadapter..')
-        s.mount('https://', host_header_ssl.HostHeaderSSLAdapter())
-        print('SNI Bypass done.')
+        config = configparser.ConfigParser()
+        config.read('config.ini')
+        if config['Connection']['sni_bypass_enable'] == 'True':
+            sni_bypass = True
+        if config['Proxy']['Enable'] == 'True':
+            proxy_enable = True
+        proxy_host = config['Proxy']['IP']
+        proxy_port = config['Proxy']['PORT']
+        pixiv_user_name = config['Account']['User_name']
+        pixiv_user_pass = config['Account']['User_pass']
+        if config['Data']['CUST_PATH_ENABLE'] == 'True':
+            cust_path_enable = True
+            save_path = config['Data']['SAVE_PATH']
+        if config['Data']['PRINT_INFO'] == 'True':
+            print_info = True
+        bookmarked_filter = config['Data']['BOOKMARKED_FILTER']
+    if os.path.exists("cookies"):
+        with open('cookies', 'r') as f:
+            cookies = f.read()
+            if len(cookies) > 0:
+                piviv_user_cookies_is_not_empty = True
+                pixiv_user_cookies = json.loads(cookies)
+    else:
+        print_with_tag(tag, 'Can not to find the Cookies.')
 
-def get_text_from_url(url):
-    retry=0
+
+config_and_cookies_check()
+
+
+def change_params_and_get_the_session():
+    global params, datas, login_url, post_url, s
+    tag = 'Change_Params_And_Get_The_Session'
+    print_with_tag(tag, 'Changing Request params..')
+    datas['pixiv_id'] = pixiv_user_name
+    datas['password'] = pixiv_user_pass
+    print_with_tag(tag, 'Post data params changed.')
+    s = requests.Session()
+    s.headers = params
+    print_with_tag(tag, 'Session started.')
+
+
+change_params_and_get_the_session()
+
+
+def get_dns_data_from_doh_server(name, type):
+    '''
+    :param name: str ['pixiv.net'...]
+    :param type: str ['A','AAAA'...]
+    :return:str
+    '''
+    tag = 'DoH_Request_Format'
+    doh_server = 'https://cloudflare-dns.com/dns-query?'
+    doh_header = {'accept': 'application/dns-json'}
+    final_doh_request_url = doh_server + 'name=' + name + '&type=' + type
+    res = json.loads(requests.get(final_doh_request_url, headers=doh_header).text)['Answer']
+    for per_dns_data in res:
+        if per_dns_data['type'] == 1:
+            a_record = per_dns_data['data']
+            print_with_tag(tag, ['Domain', name, 'A record found.'])
+            print_with_tag(tag, ['A record:', a_record])
+            return a_record
+    return '0.0.0.0'
+
+
+def proxy_and_sni_switch():
+    global proxy_enable, s, sni_bypass, server_ip, dl_server_ip, post_url
+    tag = 'Proxy_And_Sni_Switch'
+    if proxy_enable:
+        print_with_tag(tag, 'Going to connect to your socks5 server..')
+        try:
+            # socks.set_default_proxy(socks.SOCKS5, proxy_host, int(proxy_port))
+            # socket.socket = socks.socksocket
+            # socket.timeout = 500
+            proxies = {
+                "http": "socks5://" + proxy_host + ":" + proxy_port,
+                'https': "socks5://" + proxy_host + ":" + proxy_port
+            }
+            s.proxies = proxies
+        except Exception as e:
+            print_with_tag(tag, 'An error occurred when setting up the socks5 proxy for request.')
+            print_with_tag(tag, e)
+            exit()
+        else:
+            print_with_tag(tag, 'Proxy connection seems successfully created!!')
+    else:
+        print_with_tag(tag, 'Not using the proxy..')
+        if sni_bypass:
+            tag = 'Experiment Function: SNI Bypass'
+            print_with_tag(tag, 'Starting..')
+            ##########################################################
+            print_with_tag(tag, 'Using DoH server to get the correct DNS record.')
+            server_ip = get_dns_data_from_doh_server('www.pixiv.net', 'A')
+            print_with_tag(tag, ['Server IP =>', server_ip])
+            dl_server_ip = get_dns_data_from_doh_server('i.pximg.net', 'A')
+            print_with_tag(tag, ['DL Server IP =>', dl_server_ip])
+            post_url = post_url.replace('accounts.pixiv.net', server_ip)
+            print_with_tag(tag, 'Setting up SSLadapter..')
+            s.mount('https://', host_header_ssl.HostHeaderSSLAdapter())
+            print_with_tag(tag, 'SNI Bypass done.')
+
+
+proxy_and_sni_switch()
+
+
+def get_text_from_url(url, mode=1):
+    '''
+    :param url:
+    :param mode: 1=text 2=status_code
+    :return:
+    '''
+    global params, sni_bypass
+    tag = 'Get_Text_From_Url'
+    retry = 0
     t_url = url
     temp_header = params
     if sni_bypass:
@@ -231,21 +298,27 @@ def get_text_from_url(url):
             t_url = t_url.replace(host_account, server_ip)
         elif host == host_dl:
             t_url = t_url.replace(host_dl, dl_server_ip)
-        print('SNI Host =>', host)
-        print('SNI URL =>', t_url)
+        print_with_tag(tag, ['SNI Host =>', host])
+        print_with_tag(tag, ['SNI URL =>', t_url])
     while True:
         try:
-            if retry > 3:
-                print('Max retried reached')
+            if retry == 3:
+                print_with_tag(tag, 'Max retried reached')
                 exit()
             retry += 1
-            return s.get(t_url,headers=temp_header,timeout=10).text
+            if mode == 1:
+                return s.get(t_url, headers=temp_header, timeout=10).text
+            if mode == 2:
+                return s.get(t_url, headers=temp_header, timeout=10).status_code
         except Exception as e:
-            print('Error Request URL:',url)
-            print('Retry count:', retry)
-            print('Error INFO:',e)
+            print_with_tag(tag, ['Error Request URL:', url])
+            print_with_tag(tag, ['Retry count:', retry])
+            print_with_tag(tag, ['Error INFO:', e])
+
 
 def update_user_cookies():
+    global s, datas, piviv_user_cookies_is_not_empty, program_path
+    tag = 'Update_User_Cookies'
     s.cookies.clear()
     # 获取登录页面
     res = get_text_from_url(login_url)
@@ -253,33 +326,30 @@ def update_user_cookies():
     r = pattern.findall(res)
 
     datas['post_key'] = r[0]
-    print('Post_Key:', datas['post_key'])
+    print_with_tag(tag, ['Post_Key:', datas['post_key']])
     result = s.post(post_url, data=datas, timeout=10)
     result_check = json.loads(result.text)['body']
-    print(result_check)
+    print_with_tag(tag, ['Response:', str(result_check)])
     if 'success' in result_check:
-        print('Login success!')
+        print_with_tag(tag, 'Login success!')
         with open(program_path + 'cookies', 'w+') as f:
             f.write(json.dumps(result.cookies))
     else:
-        print("Login Error!")
-        global piviv_user_cookies_is_not_empty
+        print_with_tag(tag, "Login Error!")
         if input_yn('Do you want to try to login with your own cookies?'):
-            print('How did you get the cookies?')
+            print_with_tag(tag, 'How did you get the cookies?')
             where_did_you_get = input(
                 'From the Chrome Desktop Console/From the Firefox\'s Cookies Quick Manager[Type 1 or 2]:')
             if where_did_you_get == '1':
                 cookies = input('Please enter the cookies:')
-                print('Parsing the cookies..')
+                print_with_tag(tag, 'Parsing the cookies..')
                 cookies_dict = {}
                 lst = cookies.split(';')
-                # print(lst)
                 for each_key in lst:
                     name = each_key.split('=')[0]
                     value = each_key.split('=')[1]
                     cookies_dict[name] = value
-                # print(cookies_dict)
-                print('Done!')
+                print_with_tag(tag, 'Done!')
                 with open('cookies', 'w+') as f:
                     f.write(json.dumps(cookies_dict))
                 s.cookies = requests.utils.cookiejar_from_dict(cookies_dict)
@@ -289,22 +359,24 @@ def update_user_cookies():
                     cookies_file = open(program_path + 'cookies.json', 'r')
                     cookies = json.loads(cookies_file.read())
                     cookies_file.close()
-                    print('Parsing the cookies..')
+                    print_with_tag(tag, 'Parsing the cookies..')
                     ex_cookies = {}
                     for each_key in cookies:
                         name = each_key['Name raw']
                         value = each_key['Content raw']
                         ex_cookies[name] = value
-                    print('Done!')
+                    print_with_tag(tag, 'Done!')
                     with open('cookies', 'w+') as f:
                         f.write(json.dumps(ex_cookies))
                     s.cookies = requests.utils.cookiejar_from_dict(ex_cookies)
                     piviv_user_cookies_is_not_empty = True
                 else:
-                    print('Bye!!')
+                    print_with_tag(tag, 'You should save that json file to your current program dir.')
+                    print_with_tag(tag, 'Bye!!')
                     exit()
         else:
-            print('Bye!!')
+            print_with_tag(tag, 'You can not run this program without log in.')
+            print_with_tag(tag, 'Bye!!')
             exit()
 
             # chrome_options = webdriver.ChromeOptions()
@@ -330,30 +402,20 @@ def update_user_cookies():
             # piviv_user_cookies_is_not_empty = True
 
 
-if not piviv_user_cookies_is_not_empty:
-    update_user_cookies()
-else:
-    pixiv_user_cookies_dict = dict(pixiv_user_cookies)
-    s.cookies = requests.utils.cookiejar_from_dict(pixiv_user_cookies_dict)
+def load_cookies():
+    tag = 'Load_Cookies'
+    if not piviv_user_cookies_is_not_empty:
+        print_with_tag(tag, 'Cookies is empty.')
+        update_user_cookies()
+    else:
+        print_with_tag(tag, 'Cookies is not empty.')
+        pixiv_user_cookies_dict = dict(pixiv_user_cookies)
+        s.cookies = requests.utils.cookiejar_from_dict(pixiv_user_cookies_dict)
+        print_with_tag(tag, 'Cookies is loaded.')
 
 
-# print(s.cookies)
+load_cookies()
 
-# 当前日期
-year_month = time.strftime("%Y%m", time.localtime())
-day = time.strftime("%d", time.localtime())
-
-# param
-p_date = '&date='
-p_page = '&p='
-#
-page = 1
-max_page = 10
-
-# Finding the available Day
-ranking_daily_json = ""
-
-#
 """
 Mode
     0:Daily
@@ -370,18 +432,17 @@ ranking_types = ['daily', 'weekly', 'monthly', 'rookie', 'original', 'male', 'fe
 
 
 def format_pixiv_ranking_url(year_month, day, page, mode=1):
+    tag='Ranking_Url_Format'
     ranking_type = "daily"
-    print('Received mode:', mode)
     if mode < 12:
         ranking_type = ranking_types[mode]
     else:
-        print("Unknown Mode")
+        print_with_tag(tag,"Unknown Mode")
         exit()
-    print('Type:', ranking_type)
+    print_with_tag(tag,['Type:', ranking_type])
     ranking_url = 'https://www.pixiv.net/ranking.php?mode=' + ranking_type + '&date=' + year_month + str(
         day) + '&p=' + str(
         page) + '&format=json'
-    # print(ranking_url)
     return ranking_url
 
 
@@ -392,25 +453,12 @@ def format_pixiv_illust_url(illust_id):
 
 
 def get_pixiv_user_name():
+    tag='Get_Pixiv_User_Name'
     # Check if cookies works.
     pixiv_www_url = 'https://www.pixiv.net/'
-    retry = 0
-    while True:
-        try:
-            if retry > 3:
-                print('Max retried reached')
-                exit()
-            retry += 1
-            check_soup = BeautifulSoup(get_text_from_url(pixiv_www_url), 'html.parser')
-            pixiv_user_nick_name = check_soup.find(name='a',
-                                                   attrs={'class': 'user-name js-click-trackable-later'}).string
-            print('Login as', pixiv_user_nick_name)
-        except Exception as e:
-            print('An error occurred when checking the cookies.')
-            print('Probably case the saved cookies is invalid.')
-            print(e)
-        else:
-            break
+    check_soup = BeautifulSoup(get_text_from_url(pixiv_www_url), 'html.parser')
+    pixiv_user_nick_name = check_soup.find(name='a',attrs={'class': 'user-name js-click-trackable-later'}).string
+    print_with_tag(tag,['Login as', pixiv_user_nick_name])
 
 
 #
@@ -422,52 +470,51 @@ def get_pixiv_user_name():
 
 
 def update_database(illustID, illustTitle, illustType, userId, userName, tags, urls):
+    tag='Update_Database'
     # Connect database
     conn = sqlite3.connect('illust_data.db')
     c = conn.cursor()
     # Create table
     if len(c.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='ILLUST_DATA'").fetchall()) == 0:
-        print('Creating table..')
+        print_with_tag(tag,'Creating table..')
         c.execute('''CREATE TABLE ILLUST_DATA
                      (ID INT PRIMARY KEY NOT NULL, TITLE TEXT NOT NULL, TYPE INT NOT NULL, USER_ID INT NOT NULL,USER_NAME TEXT NOT NULL,TAGS TEXT NOT NULL,IMG_SRC TEXT NOT NULL)''')
-        print('Done.')
+        print_with_tag(tag,'Done.')
     if len(c.execute("SELECT ID FROM ILLUST_DATA WHERE ID = ?", (str(illustID),)).fetchall()) == 0:
-        print('Ready to insert data for ID:', str(illustID))
+        print_with_tag(tag,['Ready to insert data for ID:', str(illustID)])
         # Insert a row of data
         sql = "INSERT INTO ILLUST_DATA(ID,TITLE,TYPE,USER_ID,USER_NAME,TAGS,IMG_SRC)VALUES(?,?,?,?,?,?,?)"
         c.execute(sql, (str(illustID), str(illustTitle), str(illustType),
                         str(userId), str(userName), str(tags), str(urls)))
-        print('Insert done.')
+        print_with_tag(tag,'Insert done.')
         # Save (commit) the changes
         conn.commit()
-        print('Committed.')
+        print_with_tag(tag,'Committed.')
     else:
-        print('ID exist:', str(illustID))
+        print_with_tag(tag,['ID exist:', str(illustID)])
     # We can also close the connection if we are done with it.
     # Just be sure any changes have been committed or they will be lost.
     conn.close()
 
 
 def format_pixiv_illust_original_url(id_url, mode=1):
+    tag='Format_Pixiv_Illust_Original_Url'
     if mode == 1:
         contents = get_text_from_url(id_url)
-        contents.raise_for_status()
         try:
             img_src_re = re.compile(r'\"urls\":{.*?}')
-            img_src = img_src_re.findall(contents.text)
+            img_src = img_src_re.findall(contents)
             final_dict = json.loads("{" + img_src[0] + "}")
             return final_dict['urls']['original']
         except Exception as e:
-            print("An error occurred when parsing the json file.")
-            print(e)
+            print_with_tag(tag,"An error occurred when parsing the json file.")
+            print_with_tag(tag,e)
     elif mode == 2:
         data_list = []
         json_datas = get_text_from_url(id_url)
-        json_datas.raise_for_status()
-        json_datas_format = json.loads(json_datas.text)['body']
+        json_datas_format = json.loads(json_datas)['body']
         for urls in json_datas_format:
             data_list.append(urls['urls']['original'])
-        # print(data_list)
         return data_list
 
 
@@ -478,19 +525,7 @@ def format_pixiv_user_profile_all_url(target_user_id):
 
 def get_illust_infos_from_illust_url(url):
     data_dict = {}
-    retry = 0
-    while True:
-        try:
-            if retry > 3:
-                print('Max retried reached')
-                exit()
-            retry += 1
-            illust_url_content = get_text_from_url(url)
-        except Exception as e:
-            print('An error occurred when getting the illust index.')
-            print(e)
-        else:
-            break
+    illust_url_content = get_text_from_url(url)
     # illust_url_content.encoding = 'unicode_escape'
     json_data = re.compile(r'\)\({[\d\D]*,}\);').findall(illust_url_content)[0][2:-2]
     format_json_data = demjson.decode(json_data)
@@ -520,7 +555,6 @@ def get_illust_infos_from_illust_url(url):
     for tag in range(len(per_tags)):
         tags_list.append(per_tags[tag]['tag'])
     data_dict['tags'] = tags_list
-    # # print(data_dict)
     ###########################################################
     update_database(data_dict['illustId'], data_dict['illustTitle'], data_dict['illustType'], data_dict['userId'],
                     data_dict['userName'], data_dict['tags'], data_dict['urls'])
@@ -533,6 +567,7 @@ def format_multi_illust_json_url(multi_illust_id):
 
 
 def dynamic_download_and_Synthesizing(illust_id, title=None, prefix=None):
+    tag='Dynamic_Download_And_Synthesizing'
     d_json_data = 'https://www.pixiv.net/ajax/illust/' + str(illust_id) + '/ugoira_meta'
     d_json_decoded = json.loads(get_text_from_url(d_json_data)['body'])
     src_zip_url = d_json_decoded['originalSrc']
@@ -545,8 +580,8 @@ def dynamic_download_and_Synthesizing(illust_id, title=None, prefix=None):
     download_thread(src_zip_url, save_path, None, 'TEMP' + global_symbol + str(illust_id))
     while not os.path.exists(src_saved_path + '.done'):
         time.sleep(1)
-        print('Waiting for complete...')
-    print('Zip target downloaded:', src_saved_path)
+        print_with_tag(tag,'Waiting for complete...')
+    print_with_tag(tag,['Zip target downloaded:', src_saved_path])
     with zipfile.ZipFile(src_saved_path, 'r') as zip_file:
         zip_file.extractall(path=src_saved_dir)
     # get each frame
@@ -557,8 +592,7 @@ def dynamic_download_and_Synthesizing(illust_id, title=None, prefix=None):
             if file.endswith('jpg') or file.endswith('png'):
                 sort_by_num.append(src_saved_dir + global_symbol + file)
     sort_by_num.sort()
-    # print('sorted:', sort_by_num)
-    print('Reading each frame..')
+    print_with_tag(tag,'Reading each frame..')
     for each_frame in sort_by_num:
         frames.append(imageio.imread(each_frame))
     gif_save_dir = save_path + str(prefix) + global_symbol + year_month + str(
@@ -566,17 +600,18 @@ def dynamic_download_and_Synthesizing(illust_id, title=None, prefix=None):
     gif_name_format = re.sub('[\/:*?"<>|]', '_', str(title)) + '-' + str(illust_id) + '.gif'
     if not os.path.exists(gif_save_dir):
         os.makedirs(gif_save_dir)
-    print('Synthesizing dynamic images..')
+    print_with_tag(tag,'Synthesizing dynamic images..')
     try:
         imageio.mimsave(gif_save_dir + gif_name_format, frames, duration=src_img_delay)
     except Exception as e:
-        print(gif_save_dir + gif_name_format)
-        print(e)
+        print_with_tag(tag,[gif_save_dir + gif_name_format])
+        print_with_tag(tag,e)
         exit()
 
 
 def download_file(url, path, sign=False):
-    print('Download URL:',url)
+    tag='\nDownload_File'
+    print_with_tag(tag,['Download URL:', url])
     download_proxy = s.proxies
 
     global current_threads
@@ -585,20 +620,20 @@ def download_file(url, path, sign=False):
         url = url.replace('i.pximg.net', d_dtrp_address)
         download_proxy = None
 
-    print("\nThread ID:" + str(_thread.get_ident()))
+    print_with_tag(tag,["Thread ID:" + str(_thread.get_ident())])
     path_output = path
     retry = 0
     while True:
         try:
             if retry > 3:
-                print('\nMax retried reached')
+                print_with_tag(tag,'Max retried reached')
                 exit()
             retry += 1
-            with requests.get(url, stream=True, proxies=download_proxy,headers=params) as pic:
+            with requests.get(url, stream=True, proxies=download_proxy, headers=params) as pic:
                 pic.raise_for_status()
                 if os.path.exists(path_output):
                     current_threads -= 1
-                    print("\nFile exists:" + path_output, "\nSkip!")
+                    print_with_tag(tag,["File exists:" + path_output, "Skip!"])
                     return False
                 try:
                     with open(path_output, 'wb') as f:
@@ -606,23 +641,24 @@ def download_file(url, path, sign=False):
                             if chunk:
                                 f.write(chunk)
                 except Exception as e:
-                    print('\nAn error occurred when saving files.')
-                    print(e)
+                    print_with_tag(tag,'An error occurred when saving files.')
+                    print_with_tag(tag,e)
                 else:
-                    print("\nFile Saved:" + path_output)
+                    print_with_tag(tag,["File Saved:" + path_output])
                     if sign:
                         with open(path_output + '.done', 'w+') as f:
                             f.write('\nDone!')
-                            print('\nCreated a sign for main thread.')
+                            print_with_tag(tag,'Created a sign for main thread.')
         except Exception as e:
-            print('\nAn error occurred when Downloading files.')
-            print(e)
+            print_with_tag(tag,'An error occurred when Downloading files.')
+            print_with_tag(tag,e)
         else:
             current_threads -= 1
             return True
 
 
 def download_thread(url, path, exfile_name=None, exfile_dir=None):
+    tag='Download_Thread'
     wait_for_limit()
     local_path = path
     give_it_a_sign = False
@@ -634,48 +670,54 @@ def download_thread(url, path, exfile_name=None, exfile_dir=None):
     if exfile_name is not None:
         local_filename = exfile_name + "-" + local_filename
     path_output = local_path + local_filename
-    print("File Location:" + path_output)
+    print_with_tag(tag,["File Location:" + path_output])
     if not os.path.exists(local_path):
-        print("Folder doesn't exists!!")
+        print_with_tag(tag,"Folder doesn't exists!!")
         os.makedirs(local_path)
-        print("Folder Created.")
+        print_with_tag(tag,"Folder Created.")
+
     retry_count = 0
-    try:
-        _thread.TIMEOUT_MAX = 10000
-        _thread.start_new_thread(download_file, (url, path_output, give_it_a_sign))
-    except:
-        print("Error..")
-        if retry_count >= 3:
-            print("Not wokring..")
-            print("Skip!!")
+    while True:
+        try:
+            _thread.TIMEOUT_MAX = 60
+            _thread.start_new_thread(download_file, (url, path_output, give_it_a_sign))
+        except:
+            print_with_tag(tag,"Error.")
+            if retry_count == 3:
+                print_with_tag(tag,"Not wokring..")
+                print_with_tag(tag,"Skip!!")
+            else:
+                print_with_tag(tag,"Starting retry..")
+                retry_count += 1
         else:
-            print("Starting retry..")
-            retry_count += 1
-    else:
-        print("\nDownload thread successfully started!")
-    print('Threads_count:', str(current_threads))
+            print_with_tag(tag,"Download thread successfully started!")
+            break
+    print_with_tag(tag,['Threads_count:', str(current_threads)])
 
 
 def wait_for_limit():
+    tag='Limit_Lock'
     while current_threads >= subthreads_limit:
-        print('Max Threads Reached,Waiting for release..')
+        print_with_tag(tag,'Max Threads Reached,Waiting for release..')
         time.sleep(1)
 
 
 while (True):
+    tag='Main_Stage'
     current_threads = 0
     get_pixiv_user_name()
-    print('What do you want to do?')
-    print("Download the selected ranking pics(1)")
-    print("Download the pics from a user(2)")
-    print('Download the pics that you marked(3)')
-    print('Update the user cookies(4)')
-    print('Parse an illust info with given illust id(5)')
-    print('Search something via single key word(6)')
-    print('Download the illusts from recommender(7)')
-    print('Exit(8)')
+    print_with_tag(tag,'What do you want to do?')
+    print_with_tag(tag,"Download the selected ranking pics(1)")
+    print_with_tag(tag,"Download the pics from a user(2)")
+    print_with_tag(tag,'Download the pics that you marked(3)')
+    print_with_tag(tag,'Update the user cookies(4)')
+    print_with_tag(tag,'Parse an illust info with given illust id(5)')
+    print_with_tag(tag,'Search something via single key word(6)')
+    print_with_tag(tag,'Download the illusts from recommender(7)')
+    print_with_tag(tag,'Exit(8)')
     choose = input("Your choose[1-8]:")
     if choose == '1':
+        tag='Download_Ranking_Pics'
         mode_asked = int(input('Please choose the ranking type(0-11):'))
         # 倒序取出可用日期
         if input_yn('Do you want to choose a date?'):
@@ -684,95 +726,53 @@ while (True):
             year_month = date_dict[0] + date_dict[1]
             day = date_dict[2]
         else:
-            print('Testing available day of mode 1..')
+            print_with_tag(tag,'Testing available day of mode 1..')
             for i in reversed(range(1, int(day) + 1)):
                 if i == 1:
                     last_month = int(time.strftime('%m', time.localtime())) - 1
-                    print('Changing the month to', str(last_month))
+                    print_with_tag(tag,['Changing the month to', str(last_month)])
                     if last_month < 10:
                         last_month = '0' + str(last_month)
                     year_minus_month = time.strftime('%Y', time.localtime()) + str(last_month)
                     for last_i in reversed(range(1, 32)):
-                        print("Changing the day param to :", last_i)
-                        retry = 0
-                        while True:
-                            try:
-                                if retry > 3:
-                                    print('Max retried reached')
-                                    exit()
-                                retry += 1
-                                ranking_daily_json = get_text_from_url(format_pixiv_ranking_url(year_minus_month, str(last_i), page))
-                            except Exception as e:
-                                print('An error occurred when getting the ranking index.')
-                                print(e)
-                            else:
-                                break
-                        if ranking_daily_json.status_code == 200:
-                            print("Found the available Day at day " + str(last_i))
-                            print('Final ranking date:', year_minus_month + str(last_i))
+                        print_with_tag(tag,["Changing the day param to :", last_i])
+                        ranking_daily_json = get_text_from_url(format_pixiv_ranking_url(year_minus_month, str(last_i), page))
+                        if get_text_from_url(
+                                    format_pixiv_ranking_url(year_minus_month, str(last_i), page),2) == 200:
+                            print_with_tag(tag,["Found the available Day at day " + str(last_i)])
+                            print_with_tag(tag,['Final ranking date:', year_minus_month + str(last_i)])
                             year_month = year_minus_month
                             day = last_i
                             break
                         else:
-                            print("Error Status code:", ranking_daily_json.status_code, "at day " + str(i))
+                            print_with_tag(tag,["Error Status code:", get_text_from_url(format_pixiv_ranking_url(year_minus_month, str(last_i), page),2), "at day " + str(i)])
                     break
                 if i < 10:
-                    print('Auto add zero..')
+                    print_with_tag(tag,'Auto add zero..')
                     i = '0' + str(i)
-                print("Changing day param to :", i)
-                retry = 0
-                while True:
-                    try:
-                        if retry > 3:
-                            print('Max retried reached')
-                            exit()
-                        retry += 1
-                        ranking_daily_json = get_text_from_url(format_pixiv_ranking_url(year_month, i, page))
-                    except Exception as e:
-                        print('An error occurred when getting the ranking index.')
-                        print(e)
-                    else:
-                        break
-                if ranking_daily_json.status_code == 200:
-                    print("Found the available Day at day " + str(i))
+                print_with_tag(tag,["Changing day param to :", i])
+                ranking_daily_json = get_text_from_url(format_pixiv_ranking_url(year_month, i, page))
+                ranking_json_status_code=get_text_from_url(format_pixiv_ranking_url(year_month, i, page),2)
+                if ranking_json_status_code == 200:
+                    print_with_tag(tag,"Found the available Day at day " + str(i))
                     day = i
                     break
                 else:
-                    print("Error Status code:", ranking_daily_json.status_code, "at day " + str(i))
+                    print_with_tag(tag,["Error Status code:", ranking_json_status_code, "at day " + str(i)])
 
         start_time = time.time()
         #
         # 共10页json
         for i in range(1, max_page + 1):
-            print("Catching Page:", i)
-            print('You selected:', mode_asked)
+            print_with_tag(tag,["Catching Page:", i])
+            print_with_tag(tag,['You selected:', mode_asked])
             url = format_pixiv_ranking_url(year_month, day, i, mode_asked)
-            print("URL TARGET: " + url)
-            retry = 0
-            while True:
-                try:
-                    if retry > 3:
-                        print('Max retried reached')
-                        exit()
-                    retry += 1
-                    json_source_contents = get_text_from_url(url)
-                except Exception as e:
-                    print('An error occurred when getting the per page json file.')
-                    print(e)
-                else:
-                    break
-            try:
-                json_source_contents.raise_for_status()
-            except Exception as e:
-                print('When catching the json file an error occurred.')
-                print('Might be the page out of max page..')
-                print(e)
-                exit()
-            json_data = json.loads(json_source_contents.text)
+            print_with_tag(tag,["URL TARGET: " + url])
+            json_source_contents = get_text_from_url(url)
+            json_data = json.loads(json_source_contents)
             temp_header = s.headers
             temp_header['referer'] = url
             s.headers = temp_header
-            # print("Current Page:", i, json_data)
             for item in range(50):
                 single_data = json_data['contents'][item]
                 title = single_data['title']
@@ -854,7 +854,6 @@ while (True):
                 print(e)
             else:
                 break
-        profile_all.raise_for_status()
         profile_all_json = json.loads(profile_all)
         all_illusts = profile_all_json['body']['illusts']
         illusts_ids = all_illusts.keys()
@@ -872,20 +871,7 @@ while (True):
         print('\nALL Done')
     elif choose == '3':
         print('Catching your bookmark..')
-        retry = 0
-        while True:
-            try:
-                if retry > 3:
-                    print('Max retried reached')
-                    exit()
-                retry += 1
-                bookmark = get_text_from_url('https://www.pixiv.net/bookmark.php')
-            except Exception as e:
-                print('An error occurred when getting the bookmark index')
-                print(e)
-            else:
-                break
-        bookmark.raise_for_status()
+        bookmark = get_text_from_url('https://www.pixiv.net/bookmark.php')
         soup = BeautifulSoup(bookmark, 'html.parser')
 
         book_pages = soup.find(name='ul', attrs={'class': 'page-list'})

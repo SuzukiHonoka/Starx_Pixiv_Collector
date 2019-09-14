@@ -155,9 +155,9 @@ else:
 # init get param
 params = {
     'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) '
-                  'Chrome/75.0.3770.142 Safari/537.36',
+                  'Chrome/76.0.3809.132 Safari/537.36',
     'authority': 'www.pixiv.net',
-    'upgrade-insecure-requests': '1',
+    'content-type': 'application/x-www-form-urlencoded',
     'accept-language': 'en-US,en;q=0.9,zh-CN;q=0.8,zh;q=0.7,zh-TW;q=0.6',
     'dnt': '1',
     'referer': 'https://www.pixiv.net/'
@@ -210,6 +210,7 @@ else:
         print('Server IP =>', server_ip)
         dl_server_ip = socket.gethostbyname('i.pximg.net')
         print('DL Server IP =>', dl_server_ip)
+        post_url = post_url.replace('accounts.pixiv.net',server_ip)
         print('Setting up SSLadapter..')
         s.mount('https://', host_header_ssl.HostHeaderSSLAdapter())
         print('SNI Bypass done.')
@@ -217,10 +218,10 @@ else:
 def get_text_from_url(url):
     retry=0
     t_url = url
+    temp_header = params
     if sni_bypass:
         host = url.split('//')[1].split('/')[0]
-        s.headers['Host'] = host
-        print(s.headers)
+        temp_header['host'] = host
         host_home = 'www.pixiv.net'
         host_account = 'accounts.pixiv.net'
         host_dl = 'i.pximg.net'
@@ -230,13 +231,15 @@ def get_text_from_url(url):
             t_url = t_url.replace(host_account, server_ip)
         elif host == host_dl:
             t_url = t_url.replace(host_dl, dl_server_ip)
+        print('SNI Host =>', host)
+        print('SNI URL =>', t_url)
     while True:
         try:
             if retry > 3:
                 print('Max retried reached')
                 exit()
             retry += 1
-            return s.get(t_url,timeout=10).text
+            return s.get(t_url,headers=temp_header,timeout=10).text
         except Exception as e:
             print('Error Request URL:',url)
             print('Retry count:', retry)
@@ -246,13 +249,11 @@ def update_user_cookies():
     s.cookies.clear()
     # 获取登录页面
     res = get_text_from_url(login_url)
-
     pattern = re.compile(r'name="post_key" value="(.*?)">')
     r = pattern.findall(res)
 
     datas['post_key'] = r[0]
     print('Post_Key:', datas['post_key'])
-
     result = s.post(post_url, data=datas, timeout=10)
     result_check = json.loads(result.text)['body']
     print(result_check)

@@ -8,6 +8,7 @@ import sqlite3
 import sys
 import time
 import zipfile
+import socket
 
 import demjson
 import imageio
@@ -217,6 +218,22 @@ def change_params_and_get_the_session():
 
 change_params_and_get_the_session()
 
+def ip_latency_test(ip,port=443):
+    tag='IP_Latency_TEST'
+    print_with_tag(tag,['Prepare IP latency test for ip',ip,'Port',str(port)])
+    s_test = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s_test.settimeout(10)
+    s_start = time.time()
+    try:
+        s_test.connect((ip,port))
+        s_test.shutdown(socket.SHUT_RD)
+    except Exception as e:
+        print_with_tag(tag,['Error:',e])
+        return None
+    s_stop = time.time()
+    s_runtime = '%.2f' % (1000 * (s_stop - s_start))
+    print_with_tag(tag,[ip,'Latency:',s_runtime])
+    return float(s_runtime)
 
 def get_dns_data_from_doh_server(name, type):
     '''
@@ -230,13 +247,25 @@ def get_dns_data_from_doh_server(name, type):
     doh_header = {'accept': 'application/dns-json'}
     final_doh_request_url = doh_server + 'name=' + name + '&type=' + type
     res = json.loads(requests.get(final_doh_request_url, headers=doh_header).text)['Answer']
+    d_list=[]
     for per_dns_data in res:
         if per_dns_data['type'] == 1:
             a_record = per_dns_data['data']
+            d_list.append(a_record)
+            print_with_tag(tag,['Index Of DNS Record:',str(len(d_list))])
             print_with_tag(tag, ['Domain', name, 'A record found.'])
             print_with_tag(tag, ['A record:', a_record])
-            return a_record
-    return '0.0.0.0'
+    # Init test
+    ip_latency={}
+    for per_ip in d_list:
+        ip_latency[str(ip_latency_test(per_ip))] = per_ip
+    print_with_tag(tag,'Selecting best ip node..')
+    all_latency_keys = list(ip_latency.keys())
+    all_latency_keys.sort()
+    best_latency=all_latency_keys[0]
+    best_node=ip_latency[best_latency]
+    print_with_tag(tag,['Selected:',best_node,'for lowest latency:',best_latency])
+    return best_node
 
 
 def proxy_and_sni_switch():

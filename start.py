@@ -76,7 +76,9 @@ datas = {
     'return_to': 'https://www.pixiv.net/'
 }
 #
-
+download_params = {
+        'referer': 'https://www.pixiv.net/'
+}
 #
 
 login_url = 'https://accounts.pixiv.net/login'
@@ -349,6 +351,7 @@ def get_text_from_url(url, mode=1):
             print_with_tag(tag, ['Error Request URL:', url])
             print_with_tag(tag, ['Retry count:', retry])
             print_with_tag(tag, ['Error INFO:', e])
+            print(temp_header)
             # traceback.print_exc()
 
 
@@ -649,9 +652,10 @@ def download_file(url, path, sign=False):
     tag = 'Download_File'
     print_with_tag(tag, ['Original Download URL:', url])
     download_proxy = s.proxies
-    global current_threads
+    global current_threads,download_params
     current_threads += 1
     host_dl = ''
+    temp_headers = download_params
     if d_dtrp_enable:
         url = url.replace('i.pximg.net', d_dtrp_address)
         host_dl = d_dtrp_address
@@ -666,6 +670,7 @@ def download_file(url, path, sign=False):
             print_with_tag(tag, ['SNI HOST =>', host_dl])
             print_with_tag(tag,['SNI URL =>',url])
             download_proxy = None
+            temp_headers['host'] = host_dl
 
     print_with_tag(tag, ["Thread ID:" + str(_thread.get_ident())])
     path_output = path
@@ -676,7 +681,7 @@ def download_file(url, path, sign=False):
                 print_with_tag(tag, 'Max retried reached')
                 exit()
             retry += 1
-            with s.get(url, stream=True, proxies=download_proxy, headers={'host': host_dl}) as pic:
+            with s.get(url, stream=True, proxies=download_proxy, headers=temp_headers) as pic:
                 pic.raise_for_status()
                 if os.path.exists(path_output):
                     current_threads -= 1

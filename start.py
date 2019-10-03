@@ -39,6 +39,8 @@ pixiv_user_name = ''
 pixiv_user_pass = ''
 pixiv_user_cookies = ''
 piviv_user_cookies_is_not_empty = False
+login_status = False
+direct_mode = False
 cust_path_enable = False
 print_info = False
 bookmarked_filter = 0
@@ -77,7 +79,7 @@ datas = {
 }
 #
 download_params = {
-        'referer': 'https://www.pixiv.net/'
+    'referer': 'https://www.pixiv.net/'
 }
 #
 
@@ -126,7 +128,7 @@ def input_yn(str):
 
 def config_and_cookies_check():
     tag = 'Config_and_Cookies_Check_Process'
-    global proxy_enable, proxy_host, proxy_port, sni_bypass, cust_path_enable, save_path, print_info, bookmarked_filter, pixiv_user_name, pixiv_user_pass, piviv_user_cookies_is_not_empty, pixiv_user_cookies
+    global proxy_enable, proxy_host, proxy_port, sni_bypass, cust_path_enable, save_path, print_info, bookmarked_filter, pixiv_user_name, pixiv_user_pass, piviv_user_cookies_is_not_empty, pixiv_user_cookies,direct_mode
     if not os.path.exists('config.ini'):
         if input_yn('Do you want to use socks5 proxy?'):
             proxy_enable = True
@@ -137,8 +139,11 @@ def config_and_cookies_check():
             proxy_enable = False
             if input_yn('Did you want to use SNI Bypass mode?'):
                 sni_bypass = True
-        pixiv_user_name = input("Please enter your own pixiv account name:")
-        pixiv_user_pass = input("Please enter your own pixiv account password:")
+        if input_yn('Did you want to use direct mode?'):
+            direct_mode = True
+        else:
+            pixiv_user_name = input("Please enter your own pixiv account name:")
+            pixiv_user_pass = input("Please enter your own pixiv account password:")
         if input_yn('Do you want to change default save path?'):
             cust_path_enable = True
             save_path = input("Please enter the full path to save the data:") + global_symbol
@@ -165,6 +170,7 @@ def config_and_cookies_check():
                 config.set('Proxy', 'IP', proxy_host)
                 config.set('Proxy', 'PORT', proxy_port)
                 config.add_section("Account")
+                config.set('Account','Direct_Mode',str(direct_mode))
                 config.set('Account', 'User_name', pixiv_user_name)
                 config.set('Account', 'User_pass', pixiv_user_pass)
                 config.add_section('Data')
@@ -184,6 +190,7 @@ def config_and_cookies_check():
             proxy_enable = True
         proxy_host = config['Proxy']['IP']
         proxy_port = config['Proxy']['PORT']
+        direct_mode = config['Account']['Direct_Mode']
         pixiv_user_name = config['Account']['User_name']
         pixiv_user_pass = config['Account']['User_pass']
         if config['Data']['CUST_PATH_ENABLE'] == 'True':
@@ -220,22 +227,24 @@ def change_params_and_get_the_session():
 
 change_params_and_get_the_session()
 
-def ip_latency_test(ip,port=443):
-    tag='IP_Latency_TEST'
-    print_with_tag(tag,['Prepare IP latency test for ip',ip,'Port',str(port)])
+
+def ip_latency_test(ip, port=443):
+    tag = 'IP_Latency_TEST'
+    print_with_tag(tag, ['Prepare IP latency test for ip', ip, 'Port', str(port)])
     s_test = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s_test.settimeout(10)
     s_start = time.time()
     try:
-        s_test.connect((ip,port))
+        s_test.connect((ip, port))
         s_test.shutdown(socket.SHUT_RD)
     except Exception as e:
-        print_with_tag(tag,['Error:',e])
+        print_with_tag(tag, ['Error:', e])
         return None
     s_stop = time.time()
     s_runtime = '%.2f' % (1000 * (s_stop - s_start))
-    print_with_tag(tag,[ip,'Latency:',s_runtime])
+    print_with_tag(tag, [ip, 'Latency:', s_runtime])
     return float(s_runtime)
+
 
 def get_dns_data_from_doh_server(name, type):
     '''
@@ -249,24 +258,24 @@ def get_dns_data_from_doh_server(name, type):
     doh_header = {'accept': 'application/dns-json'}
     final_doh_request_url = doh_server + 'name=' + name + '&type=' + type
     res = json.loads(requests.get(final_doh_request_url, headers=doh_header).text)['Answer']
-    d_list=[]
+    d_list = []
     for per_dns_data in res:
         if per_dns_data['type'] == 1:
             a_record = per_dns_data['data']
             d_list.append(a_record)
-            print_with_tag(tag,['Index Of DNS Record:',str(len(d_list))])
+            print_with_tag(tag, ['Index Of DNS Record:', str(len(d_list))])
             print_with_tag(tag, ['Domain', name, 'A record found.'])
             print_with_tag(tag, ['A record:', a_record])
     # Init test
-    ip_latency={}
+    ip_latency = {}
     for per_ip in d_list:
         ip_latency[str(ip_latency_test(per_ip))] = per_ip
-    print_with_tag(tag,'Selecting best ip node..')
+    print_with_tag(tag, 'Selecting best ip node..')
     all_latency_keys = list(ip_latency.keys())
-    all_latency_keys.sort()
-    best_latency=all_latency_keys[0]
-    best_node=ip_latency[best_latency]
-    print_with_tag(tag,['Selected:',best_node,'for lowest latency:',best_latency])
+    all_latency_keys.sort(key=float)
+    best_latency = all_latency_keys[0]
+    best_node = ip_latency[best_latency]
+    print_with_tag(tag, ['Selected:', best_node, 'for lowest latency:', best_latency])
     return best_node
 
 
@@ -445,7 +454,8 @@ def load_cookies():
     tag = 'Load_Cookies'
     if not piviv_user_cookies_is_not_empty:
         print_with_tag(tag, 'Cookies is empty.')
-        update_user_cookies()
+        if not direct_mode:
+            update_user_cookies()
     else:
         print_with_tag(tag, 'Cookies is not empty.')
         pixiv_user_cookies_dict = dict(pixiv_user_cookies)
@@ -492,13 +502,22 @@ def format_pixiv_illust_url(illust_id):
 
 
 def get_pixiv_user_name():
+    global login_status
     tag = 'Get_Pixiv_User_Name'
     # Check if cookies works.
     pixiv_www_url = 'https://www.pixiv.net/'
     check_soup = BeautifulSoup(get_text_from_url(pixiv_www_url), 'html.parser')
-    pixiv_user_nick_name = check_soup.find(name='a', attrs={'class': 'user-name js-click-trackable-later'}).string
-    print_with_tag(tag, ['Login as', pixiv_user_nick_name])
-
+    try:
+        pixiv_user_nick_name = check_soup.find(name='a', attrs={'class': 'user-name js-click-trackable-later'}).string
+        print_with_tag(tag, ['Login as', pixiv_user_nick_name])
+    except Exception as e:
+        print_with_tag(tag,['Error:',e])
+        login_status = False
+        print_with_tag(tag,'Failed to check the user name.')
+        print_with_tag(tag,'Might be the cookies is out of the date or you are using the direct mode?')
+    else:
+        login_status = True
+        print_with_tag(tag,'Login success!')
 
 #
 '''
@@ -630,7 +649,7 @@ def dynamic_download_and_Synthesizing(illust_id, title=None, prefix=None):
         for file in files:
             if file.endswith('jpg') or file.endswith('png'):
                 sort_by_num.append(src_saved_dir + global_symbol + file)
-    sort_by_num.sort()
+    sort_by_num.sort(key=float)
     print_with_tag(tag, 'Reading each frame..')
     for each_frame in sort_by_num:
         frames.append(imageio.imread(each_frame))
@@ -652,7 +671,7 @@ def download_file(url, path, sign=False):
     tag = 'Download_File'
     print_with_tag(tag, ['Original Download URL:', url])
     download_proxy = s.proxies
-    global current_threads,download_params
+    global current_threads, download_params
     current_threads += 1
     host_dl = ''
     temp_headers = download_params
@@ -660,15 +679,15 @@ def download_file(url, path, sign=False):
         url = url.replace('i.pximg.net', d_dtrp_address)
         host_dl = d_dtrp_address
         download_proxy = None
-        print_with_tag(tag,['DTRP URL =>', url])
-        print_with_tag(tag,['DTRP HOST =>', host_dl])
+        print_with_tag(tag, ['DTRP URL =>', url])
+        print_with_tag(tag, ['DTRP HOST =>', host_dl])
 
     else:
         if sni_bypass:
             url = url.replace('i.pximg.net', dl_server_ip)
             host_dl = 'i.pximg.net'
             print_with_tag(tag, ['SNI HOST =>', host_dl])
-            print_with_tag(tag,['SNI URL =>',url])
+            print_with_tag(tag, ['SNI URL =>', url])
             download_proxy = None
             temp_headers['host'] = host_dl
 
@@ -707,6 +726,7 @@ def download_file(url, path, sign=False):
         else:
             current_threads -= 1
             return True
+
 
 def download_thread(url, path, exfile_name=None, exfile_dir=None):
     tag = 'Download_Thread'
@@ -1133,6 +1153,9 @@ while (True):
 
     elif choose == '7':
         tag = 'Download_From_Recommender'
+        if not login_status:
+            print_with_tag(tag,'You must login before start this function.')
+            continue
         illust_download_limit = int(input('Set a limit for downloading?[1-1000]:'))
         # recommender_user_and_illust_url='https://www.pixiv.net/rpc/index.php?mode=get_recommend_users_and_works_by_user_ids&user_ids=211974,6148565,11&user_num=30&work_num=5'
         recommender_illust_url = 'https://www.pixiv.net/rpc/recommender.php?type=illust&sample_illusts=auto&num_recommendations=1000&page=discovery&mode=all'

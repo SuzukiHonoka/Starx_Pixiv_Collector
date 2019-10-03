@@ -360,7 +360,10 @@ def get_text_from_url(url, mode=1):
             print_with_tag(tag, ['Error Request URL:', url])
             print_with_tag(tag, ['Retry count:', retry])
             print_with_tag(tag, ['Error INFO:', e])
-            print(temp_header)
+            print('Temp_Header:',temp_header)
+            if retry == 2:
+                print('Turning off the verify.. (Warning: This is not safe if your are ok with that you cloud just keep doing what your want.)')
+                s.verify = False
             # traceback.print_exc()
 
 

@@ -630,7 +630,7 @@ def format_multi_illust_json_url(multi_illust_id):
 def dynamic_download_and_Synthesizing(illust_id, title=None, prefix=None):
     tag = 'Dynamic_Download_And_Synthesizing'
     d_json_data = 'https://www.pixiv.net/ajax/illust/' + str(illust_id) + '/ugoira_meta'
-    d_json_decoded = json.loads(get_text_from_url(d_json_data)['body'])
+    d_json_decoded = json.loads(get_text_from_url(d_json_data))['body']
     src_zip_url = d_json_decoded['originalSrc']
     src_mime_type = d_json_decoded['mime_type']
     src_img_delay = int(d_json_decoded['frames'][0]['delay']) / 1000
@@ -652,7 +652,7 @@ def dynamic_download_and_Synthesizing(illust_id, title=None, prefix=None):
         for file in files:
             if file.endswith('jpg') or file.endswith('png'):
                 sort_by_num.append(src_saved_dir + global_symbol + file)
-    sort_by_num.sort(key=float)
+    sort_by_num.sort()
     print_with_tag(tag, 'Reading each frame..')
     for each_frame in sort_by_num:
         frames.append(imageio.imread(each_frame))

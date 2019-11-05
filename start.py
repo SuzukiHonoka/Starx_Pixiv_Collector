@@ -500,7 +500,7 @@ def format_pixiv_ranking_url(year_month, day, page, mode=1):
 
 #
 def format_pixiv_illust_url(illust_id):
-    illust_url = 'https://www.pixiv.net/member_illust.php?mode=medium&illust_id=' + str(illust_id)
+    illust_url = 'https://www.pixiv.net/artworks/' + str(illust_id)
     return illust_url
 
 
@@ -588,9 +588,11 @@ def get_illust_infos_from_illust_url(url):
     data_dict = {}
     illust_url_content = get_text_from_url(url)
     # illust_url_content.encoding = 'unicode_escape'
-    json_data = re.compile(r'\)\({[\d\D]*,}\);').findall(illust_url_content)[0][2:-2]
+    new_soup = BeautifulSoup(illust_url_content,'html.parser')
+    json_data = new_soup.find(name='meta',attrs={'name':'preload-data'}).attrs['content']
     format_json_data = demjson.decode(json_data)
-    illust_info = format_json_data['preload']['illust'][list(dict.keys(format_json_data['preload']['illust']))[0]]
+    pre_catch_id = list(format_json_data['illust'].keys())[0]
+    illust_info = format_json_data['illust'][pre_catch_id]
     # get each value
     data_dict['illustId'] = illust_info['illustId']
     data_dict['illustTitle'] = illust_info['illustTitle']

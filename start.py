@@ -777,7 +777,6 @@ def wait_for_limit():
         print_with_tag(tag, 'Max Threads Reached,Waiting for release..')
         time.sleep(1)
 
-
 while (True):
     tag = 'Main_Stage'
     current_threads = 0
@@ -863,6 +862,7 @@ while (True):
                 rating_count = single_data['rating_count']
                 view_count = single_data['view_count']
                 illust_type_code = single_data['illust_type']
+                page_count = int(single_data['illust_page_count'])
                 illust_type = "Unknown"
                 if illust_type_code == '0':
                     illust_type = 'Single'
@@ -892,9 +892,23 @@ while (True):
                     print_with_tag(tag, 'Single Download start!!')
                     # pic_url = format_pixiv_illust_original_url(format_pixiv_illust_url(illust_id))
                     pic_url = info_data['urls']['original']
-
-                    print_with_tag(tag, ['Picture source address:', pic_url])
-                    download_thread(pic_url, save_path, re.sub('[\/:*?"<>|]', '_', title),
+                    if page_count > 1:
+                        print_with_tag(tag, ['Multiple page resource count:', page_count])
+                        for per_count in range(page_count):
+                            print_with_tag(tag, ['Catching at:', str(per_count)])
+                            url_split = pic_url.split('/')
+                            name_index = len(url_split) - 1
+                            name = url_split[name_index]
+                            before_name_url = '/'.join(url_split[slice(0, name_index)]) + '/'
+                            name_split = name.split('_')
+                            name_2_split = name_split[1].split('.')[1]
+                            count_url = before_name_url + illust_id + '_' + 'p' + str(per_count) + '.' + name_2_split
+                            print_with_tag(tag, ['Picture source address:', count_url])
+                            download_thread(count_url,save_path, re.sub('[\/:*?"<>|]', '_', title),
+                                    ranking_types[mode_asked] + global_symbol + year_month + str(day))
+                    else:
+                        print_with_tag(tag, ['Picture source address:', pic_url])
+                        download_thread(pic_url, save_path, re.sub('[\/:*?"<>|]', '_', title),
                                     ranking_types[mode_asked] + global_symbol + year_month + str(day))
                 elif illust_type_code == '1':
                     if not download_manga_enable:
@@ -1023,9 +1037,27 @@ while (True):
             illust_type = illust_infos['illustType']
             illust_id = illust_infos['illustId']
             illust_title = illust_infos['illustTitle']
+            illust_source_url = illust_infos['urls']['original']
+            illust_page_count = int(illust_infos['pageCount'])
             if illust_type == 0:
                 print_with_tag(tag, 'Starting Download!')
-                download_thread(illust_infos['urls']['original'], save_path,
+                if illust_page_count > 1:
+                    print_with_tag(tag, ['Multiple page resource count:', illust_page_count])
+                    for per_count in range(illust_page_count):
+                        print_with_tag(tag,['Catching at:',str(per_count)])
+                        url_split = illust_source_url.split('/')
+                        name_index = len(url_split)-1
+                        name = url_split[name_index]
+                        before_name_url = '/'.join(url_split[slice(0,name_index)]) + '/'
+                        name_split = name.split('_')
+                        name_2_split = name_split[1].split('.')[1]
+                        count_url = before_name_url + illust_id + '_' + 'p' + str(per_count) + '.' + name_2_split
+                        print_with_tag(tag, ['Picture source address:', count_url])
+                        download_thread(count_url,save_path,re.sub('[\/:*?"<>|]', '_', illust_title),
+                                'manual' + global_symbol + year_month + str(day))
+                else:
+                    print_with_tag(tag, ['Picture source address:', illust_source_url])
+                    download_thread(illust_source_url, save_path,
                                 re.sub('[\/:*?"<>|]', '_', illust_title),
                                 'manual' + global_symbol + year_month + str(day))
             elif illust_type == 1:

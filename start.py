@@ -902,7 +902,7 @@ while (True):
                             before_name_url = '/'.join(url_split[slice(0, name_index)]) + '/'
                             name_split = name.split('_')
                             name_2_split = name_split[1].split('.')[1]
-                            count_url = before_name_url + illust_id + '_' + 'p' + str(per_count) + '.' + name_2_split
+                            count_url = before_name_url + str(illust_id) + '_' + 'p' + str(per_count) + '.' + name_2_split
                             print_with_tag(tag, ['Picture source address:', count_url])
                             download_thread(count_url,save_path, re.sub('[\/:*?"<>|]', '_', title),
                                     ranking_types[mode_asked] + global_symbol + year_month + str(day))
@@ -1051,7 +1051,7 @@ while (True):
                         before_name_url = '/'.join(url_split[slice(0,name_index)]) + '/'
                         name_split = name.split('_')
                         name_2_split = name_split[1].split('.')[1]
-                        count_url = before_name_url + illust_id + '_' + 'p' + str(per_count) + '.' + name_2_split
+                        count_url = before_name_url + str(illust_id) + '_' + 'p' + str(per_count) + '.' + name_2_split
                         print_with_tag(tag, ['Picture source address:', count_url])
                         download_thread(count_url,save_path,re.sub('[\/:*?"<>|]', '_', illust_title),
                                 'manual' + global_symbol + year_month + str(day))

@@ -105,7 +105,7 @@ ranking_daily_json = ""
 # voids
 ###################
 
-def print_with_tag(tag, data):
+def print_with_tag(tag, data ,debug=0):
     data_print = data
     if type(data) == list:
         data_print = ''
@@ -114,8 +114,10 @@ def print_with_tag(tag, data):
                 data_print += str(per_data)
             else:
                 data_print += ' ' + str(per_data)
-    print('[' + time.asctime(time.localtime(time.time())) + '] ' + tag + ' =>', data_print)
-
+    if debug == 1:
+        print('[' + time.asctime(time.localtime(time.time())) + '] ' + tag + ' =>', data_print)
+    else:
+        print(data_print)
 
 print_with_tag(tag, 'Welcome to use this Pixiv ranking collector!')
 print_with_tag(tag, 'This program is powered by Starx.')
@@ -141,6 +143,7 @@ def config_and_cookies_check():
                 sni_bypass = True
         if input_yn('Did you want to use direct mode?'):
             direct_mode = True
+            login_status = False
         else:
             pixiv_user_name = input("Please enter your own pixiv account name:")
             pixiv_user_pass = input("Please enter your own pixiv account password:")
@@ -184,21 +187,22 @@ def config_and_cookies_check():
     else:
         config = configparser.ConfigParser()
         config.read('config.ini')
-        if config['Connection']['sni_bypass_enable'] == 'True':
-            sni_bypass = True
-        if config['Proxy']['Enable'] == 'True':
-            proxy_enable = True
-        proxy_host = config['Proxy']['IP']
-        proxy_port = config['Proxy']['PORT']
-        direct_mode = config['Account']['Direct_Mode']
-        pixiv_user_name = config['Account']['User_name']
-        pixiv_user_pass = config['Account']['User_pass']
-        if config['Data']['CUST_PATH_ENABLE'] == 'True':
+        sni_bypass = config.getboolean('Connection','sni_bypass_enable')
+        proxy_enable = config.getboolean('Proxy','Enable')
+        proxy_host = config.get('Proxy','IP')
+        proxy_port = config.get('Proxy','PORT')
+        if config.getboolean('Account','Direct_Mode'):
+            direct_mode = True
+            login_status = False
+        else:
+            direct_mode = False
+        pixiv_user_name = config.get('Account','User_name')
+        pixiv_user_pass = config.get('Account','User_pass')
+        if config.getboolean('Data','CUST_PATH_ENABLE'):
             cust_path_enable = True
-            save_path = config['Data']['SAVE_PATH']
-        if config['Data']['PRINT_INFO'] == 'True':
-            print_info = True
-        bookmarked_filter = config['Data']['BOOKMARKED_FILTER']
+            save_path = config.get('Data','SAVE_PATH')
+        print_info =  config.get('Data','PRINT_INFO')
+        bookmarked_filter = config.getint('Data','BOOKMARKED_FILTER')
     if os.path.exists("cookies"):
         with open('cookies', 'r') as f:
             cookies = f.read()
@@ -517,7 +521,7 @@ def get_pixiv_user_name():
         print_with_tag(tag,['Error:',e])
         login_status = False
         print_with_tag(tag,'Failed to check the user name.')
-        print_with_tag(tag,'Might be the cookies is out of the date or you are using the direct mode?')
+        print_with_tag(tag,'Might be the cookies is out of the date?')
     else:
         login_status = True
         print_with_tag(tag,'Login success!')
@@ -780,17 +784,20 @@ def wait_for_limit():
 while (True):
     tag = 'Main_Stage'
     current_threads = 0
-    get_pixiv_user_name()
+    if not direct_mode:
+        get_pixiv_user_name()
+    else:
+        print_with_tag(tag,'You are using direct mode!')
     print_with_tag(tag, 'What do you want to do?')
-    print_with_tag(tag, "Download the selected ranking pics(1)")
-    print_with_tag(tag, "Download the pics from a user(2)")
+    print_with_tag(tag, 'Download the selected ranking pics(1)')
+    print_with_tag(tag, 'Download the pics from a user(2)')
     print_with_tag(tag, 'Download the pics that you marked(3)')
     print_with_tag(tag, 'Update the user cookies(4)')
     print_with_tag(tag, 'Parse an illust info with given illust id(5)')
     print_with_tag(tag, 'Search something via single key word(6)')
     print_with_tag(tag, 'Download the illusts from recommender(7)')
     print_with_tag(tag, 'Exit(8)')
-    choose = input("Your choose[1-8]:")
+    choose = input('Your choose[1-8]:')
     if choose == '1':
         tag = 'Download_Ranking_Pics'
         mode_asked = int(input('Please choose the ranking type(0-11):'))
@@ -810,12 +817,12 @@ while (True):
                         last_month = '0' + str(last_month)
                     year_minus_month = time.strftime('%Y', time.localtime()) + str(last_month)
                     for last_i in reversed(range(1, 32)):
-                        print_with_tag(tag, ["Changing the day param to :", last_i])
+                        print_with_tag(tag, ['Changing the day param to :', last_i])
                         ranking_daily_json = get_text_from_url(
                             format_pixiv_ranking_url(year_minus_month, str(last_i), page))
                         if get_text_from_url(
                                 format_pixiv_ranking_url(year_minus_month, str(last_i), page), 2) == 200:
-                            print_with_tag(tag, ["Found the available Day at day " + str(last_i)])
+                            print_with_tag(tag, ['Found the available Day at day ' + str(last_i)])
                             print_with_tag(tag, ['Final ranking date:', year_minus_month + str(last_i)])
                             year_month = year_minus_month
                             day = last_i
@@ -951,6 +958,9 @@ while (True):
         print_with_tag(tag, 'ALL Done')
     elif choose == '3':
         tag = 'Download_From_Bookmark'
+        if not login_status:
+            print('You must login before start this function.')
+            continue
         print_with_tag(tag, 'Catching your bookmark..')
         bookmark = get_text_from_url('https://www.pixiv.net/bookmark.php')
         soup = BeautifulSoup(bookmark, 'html.parser')

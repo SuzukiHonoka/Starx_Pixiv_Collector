@@ -45,7 +45,7 @@ cust_path_enable = False
 print_info = False
 bookmarked_filter = 0
 ###################
-download_manga_enable = True
+download_manga_enable = False
 download_gif_enable = True
 ###################
 current_threads = 0
@@ -201,7 +201,7 @@ def config_and_cookies_check():
         if config.getboolean('Data','CUST_PATH_ENABLE'):
             cust_path_enable = True
             save_path = config.get('Data','SAVE_PATH')
-        print_info =  config.get('Data','PRINT_INFO')
+        print_info =  config.getboolean('Data','PRINT_INFO')
         bookmarked_filter = config.getint('Data','BOOKMARKED_FILTER')
     if os.path.exists("cookies"):
         with open('cookies', 'r') as f:
@@ -843,11 +843,20 @@ while (True):
                     break
                 else:
                     print_with_tag(tag, ["Error Status code:", str(ranking_json_status_code), "at day " + str(i)])
-
+        download_limit = 0
+        downloaded_count = 0
+        if input_yn('Do you want to limit the download count?'):
+            download_limit = int(input('Please enter the limit number:'))
+        else:
+            print('Unlimited Download Start..')
         start_time = time.time()
         #
         # 共10页json
         for i in range(1, max_page + 1):
+            if downloaded_count >= download_limit:
+                break
+            else:
+                print('Total downloaded count:',downloaded_count)
             print_with_tag(tag, ["Catching Page:", str(i)])
             print_with_tag(tag, ['You selected:', mode_asked])
             url = format_pixiv_ranking_url(year_month, day, i, mode_asked)
@@ -858,6 +867,9 @@ while (True):
             temp_header['referer'] = url
             s.headers = temp_header
             for item in range(50):
+                print('Current_download_count:',downloaded_count)
+                if downloaded_count >= download_limit:
+                    break
                 single_data = json_data['contents'][item]
                 title = single_data['title']
                 date = single_data['date']
@@ -935,6 +947,7 @@ while (True):
                     dynamic_download_and_Synthesizing(illust_id, title, ranking_types[mode_asked])
                     print_with_tag(tag, 'Dynamic saved.')
                     print_with_tag(tag, ['Synthesizing cost:', time.time() - time_start_d_s])
+                downloaded_count+=1    
         print('Job finished!')
         print('Total cost:', time.time() - start_time)
     elif choose == '2':
@@ -1112,48 +1125,51 @@ while (True):
 
         path_url=home_url+type_url+key+filter+[filter_sec]+page+mode        
         '''
-        search_type_list = ['search.php?', 'novel/', 'search_user.php?s_mode=s_usr']
+        search_type_list = ['', 'novel/', 'search_user.php?s_mode=s_usr']
         search_filter_0_list = ['date_d', 'date', 'popular_d', 'popular_male_d', 'popular_female_d']
         search_filter_1_list = ['tags.php?', 'search.php?s_mode=s_tag', 'search.php?s_mode=s_tc']
 
         search_mode_list = ['all', 'safe', 'r18']
         # home_url
-        search_url = 'https://www.pixiv.net/'
+        search_url = 'https://www.pixiv.net/tags/'
         # type_url
         type_int = int(input('Please enter the search type[0-2]:'))
         search_type = search_type_list[type_int]
         # key
-        search_key_word = 'word='
-        if type_int == 2:
-            search_key_word = 'nick='
-        search_key_word += input('Please enter the single key word:')
+        #search_key_word = 'word='
+        #if type_int == 2:
+        #    search_key_word = 'nick='
+        search_key_word = input('Please enter the single key word:')
         # filter 0
-        search_filter_0 = ''
-        if type_int != 2:
-            search_filter_0 = '&order=' + search_filter_0_list[int(input('Please enter the global filter[0-4]:'))]
+        #search_filter_0 = ''
+        #if type_int != 2:
+        #    search_filter_0 = '&order=' + search_filter_0_list[int(input('Please enter the global filter[0-4]:'))]
         # filter 1 x extra check
-        search_filter_1 = ''
-        if type_int == 1:
-            search_filter_1 = search_filter_1_list[int(input('Please enter the second filter[0-2]:'))]
+        #search_filter_1 = ''
+        #if type_int == 1:
+        #   search_filter_1 = search_filter_1_list[int(input('Please enter the second filter[0-2]:'))]
         # filter 2 0
-        search_filter_2_0 = ''
+        #search_filter_2_0 = ''
         # filyer 2 1
-        search_filter_2_1 = ''
-        if type_int == 2:
-            search_filter_2_0 = '&i=' + input('Want a artist?[0-1]')
-            search_filter_2_1 = '&nick_mf=' + input('Full match?[0-1]')
+        #search_filter_2_1 = ''
+        #if type_int == 2:
+        #    search_filter_2_0 = '&i=' + input('Want a artist?[0-1]')
+        #    search_filter_2_1 = '&nick_mf=' + input('Full match?[0-1]')
         # page
         search_page = '&p=' + input('Please enter the page num[1-1000]:')
         # mode
-        search_mode = ''
-        if type_int != 2:
-            search_mode = '&mode=' + search_mode_list[int(input('Please enter the search mode[0-2]:'))]
+        #search_mode = ''
+        #if type_int != 2:
+        #    search_mode = '&mode=' + search_mode_list[int(input('Please enter the search mode[0-2]:'))]
         # path_url
-        prefix = '&'
+        #prefix = '&'
         search_target_url = ''
         while True:
             if type_int == 0:
-                search_target_url = search_url + search_type + search_key_word + search_filter_0 + search_page + search_mode
+                #search_target_url = search_url + search_type + search_key_word + search_filter_0 + search_page + search_mode
+                search_target_url = search_url + search_key_word + search_type
+                print(get_text_from_url(search_target_url))
+        
                 print_with_tag(tag, ['Search URL:', search_target_url])
                 search_single_page_data = json.loads(
                     BeautifulSoup(get_text_from_url(search_target_url), 'html.parser').find(name='input', attrs={

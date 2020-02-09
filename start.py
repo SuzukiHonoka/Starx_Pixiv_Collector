@@ -853,8 +853,9 @@ while (True):
         #
         # 共10页json
         for i in range(1, max_page + 1):
-            if downloaded_count >= download_limit:
-                break
+            if downloaded_count != 0:
+              if downloaded_count >= download_limit:
+                  break
             else:
                 print('Total downloaded count:',downloaded_count)
             print_with_tag(tag, ["Catching Page:", str(i)])
